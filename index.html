@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Golden Gate Snowboard — SF 1976</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; background: #1a1a1a; font-family: 'Righteous', sans-serif; }
+canvas { display: block; }
+
+/* ── Start Screen ── */
+#start-screen {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, rgba(180,90,40,0.85), rgba(60,30,20,0.92));
+  color: #ffeedd;
+  text-shadow: 2px 2px 0 #221100;
+}
+#start-screen h1 {
+  font-size: clamp(28px, 6vw, 64px);
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+#start-screen .date {
+  font-size: clamp(14px, 2.5vw, 22px);
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+#start-screen .subtitle {
+  font-size: clamp(12px, 2vw, 16px);
+  opacity: 0.6;
+  font-style: italic;
+  margin-bottom: 12px;
+}
+#start-screen .route-info {
+  font-size: clamp(10px, 1.6vw, 13px);
+  opacity: 0.55;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  text-align: center;
+}
+#start-screen .controls-info {
+  font-size: clamp(11px, 1.8vw, 14px);
+  opacity: 0.7;
+  line-height: 1.8;
+  margin-bottom: 32px;
+  text-align: center;
+}
+#start-btn, #restart-btn, #play-again-btn {
+  font-family: 'Righteous', sans-serif;
+  font-size: clamp(18px, 3vw, 28px);
+  padding: 14px 48px;
+  border: 3px solid #ffeedd;
+  background: transparent;
+  color: #ffeedd;
+  cursor: pointer;
+  letter-spacing: 3px;
+  transition: background 0.2s, color 0.2s;
+}
+#start-btn:hover, #restart-btn:hover, #play-again-btn:hover {
+  background: #ffeedd; color: #442200;
+}
+
+/* ── HUD ── */
+#hud {
+  position: fixed; inset: 0; z-index: 5;
+  pointer-events: none;
+  display: none;
+  font-family: 'Courier New', monospace;
+  color: #ffeecc;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.85);
+}
+#hud-score {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  font-size: clamp(20px, 3vw, 32px);
+}
+#hud-zone {
+  position: absolute; top: 48px; left: 50%; transform: translateX(-50%);
+  font-size: clamp(11px, 1.8vw, 16px);
+  font-family: 'Righteous', sans-serif;
+  color: #ffeecc;
+  opacity: 0.7;
+  letter-spacing: 3px;
+}
+#hud-distance {
+  position: absolute; bottom: 16px; right: 20px;
+  font-size: clamp(14px, 2vw, 20px);
+}
+#hud-speed {
+  position: absolute; bottom: 16px; left: 20px;
+  font-size: clamp(14px, 2vw, 20px);
+}
+#hud-lives {
+  position: absolute; top: 16px; right: 20px;
+  font-size: clamp(18px, 2.5vw, 28px);
+}
+#hud-bonus {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-size: clamp(24px, 4vw, 40px);
+  font-family: 'Righteous', sans-serif;
+  color: #ffdd44;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+#hud-zone-banner {
+  position: absolute; top: 32%; left: 50%; transform: translate(-50%, -50%);
+  font-size: clamp(32px, 6vw, 56px);
+  font-family: 'Righteous', sans-serif;
+  color: #ffdd44;
+  text-shadow: 3px 3px 0 #221100;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+  letter-spacing: 4px;
+}
+
+/* ── Game Over ── */
+#game-over {
+  position: fixed; inset: 0; z-index: 10;
+  display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, rgba(40,20,20,0.9), rgba(100,30,20,0.9));
+  color: #ffeedd;
+  text-shadow: 2px 2px 0 #110000;
+}
+#game-over h2 {
+  font-size: clamp(32px, 7vw, 72px);
+  margin-bottom: 16px;
+}
+#game-over .final-stats, #win-screen .final-stats {
+  font-size: clamp(16px, 2.5vw, 24px);
+  line-height: 1.8;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+/* ── Win Screen ── */
+#win-screen {
+  position: fixed; inset: 0; z-index: 10;
+  display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, rgba(40,80,120,0.92), rgba(180,150,40,0.92));
+  color: #ffeedd;
+  text-shadow: 2px 2px 0 #112200;
+}
+#win-screen h2 {
+  font-size: clamp(32px, 7vw, 72px);
+  margin-bottom: 8px;
+}
+#win-screen .win-subtitle {
+  font-size: clamp(14px, 2.5vw, 20px);
+  opacity: 0.8;
+  margin-bottom: 24px;
+  font-style: italic;
+}
+</style>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<!-- Start Screen -->
+<div id="start-screen">
+  <h1>GOLDEN GATE SNOWBOARD</h1>
+  <p class="date">San Francisco &mdash; February 5, 1976</p>
+  <p class="subtitle">The last time it snowed in the city</p>
+  <div class="route-info">
+    Twin Peaks &rarr; Castro &rarr; Mission &rarr; Haight &rarr; Embarcadero &rarr; The Bay
+  </div>
+  <div class="controls-info">
+    <p>&larr; &rarr; / A D &mdash; Steer</p>
+    <p>SPACE &mdash; Jump</p>
+  </div>
+  <button id="start-btn">DROP IN</button>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="hud-score">0</div>
+  <div id="hud-zone">TWIN PEAKS</div>
+  <div id="hud-distance">0 ft</div>
+  <div id="hud-speed">SPEED: 0</div>
+  <div id="hud-lives"></div>
+  <div id="hud-bonus"></div>
+  <div id="hud-zone-banner"></div>
+</div>
+
+<!-- Game Over -->
+<div id="game-over">
+  <h2>WIPEOUT!</h2>
+  <div class="final-stats">
+    <p>Distance: <span id="final-distance">0</span> ft</p>
+    <p>Score: <span id="final-score">0</span></p>
+  </div>
+  <button id="restart-btn">RIDE AGAIN</button>
+</div>
+
+<!-- Win Screen -->
+<div id="win-screen">
+  <h2>YOU MADE IT!</h2>
+  <p class="win-subtitle">The ferry awaits across the Bay</p>
+  <div class="final-stats">
+    <p>Distance: <span id="win-distance">0</span> ft</p>
+    <p>Score: <span id="win-score">0</span></p>
+    <p>Lives Remaining: <span id="win-lives">0</span></p>
+  </div>
+  <button id="play-again-btn">RIDE AGAIN</button>
+</div>
+
+<script type="module" src="game.js"></script>
+</body>
+</html>
