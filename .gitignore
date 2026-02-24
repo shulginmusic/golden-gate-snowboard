@@ -1,0 +1,8 @@
+# OS
+.DS_Store
+
+# Claude / local assistant artifacts
+.claude/
+
+# Local scratch
+features.md
