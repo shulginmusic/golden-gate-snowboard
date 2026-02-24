@@ -10,6 +10,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { overflow: hidden; background: #1a1a1a; font-family: 'Righteous', sans-serif; }
 canvas { display: block; }
+html, body, canvas { touch-action: none; overscroll-behavior: none; }
 
 /* ── Start Screen ── */
 #start-screen {
@@ -103,8 +104,17 @@ canvas { display: block; }
   font-family: 'Righteous', sans-serif;
   color: #ffdd44;
   opacity: 0;
-  transition: opacity 0.15s;
+  text-shadow: 0 0 22px rgba(255, 208, 90, 0.75), 2px 2px 0 rgba(34,17,0,0.8);
+  transition: opacity 0.15s, transform 0.2s;
   pointer-events: none;
+}
+#hud-bonus.pop {
+  animation: bonus-pop 0.32s ease-out;
+}
+@keyframes bonus-pop {
+  0% { transform: translate(-50%, -50%) scale(0.72); }
+  58% { transform: translate(-50%, -50%) scale(1.15); }
+  100% { transform: translate(-50%, -50%) scale(1); }
 }
 #hud-zone-banner {
   position: absolute; top: 32%; left: 50%; transform: translate(-50%, -50%);
@@ -181,6 +191,9 @@ canvas { display: block; }
   <div class="controls-info">
     <p>&larr; &rarr; / A D &mdash; Steer</p>
     <p>SPACE &mdash; Jump</p>
+    <p>MOBILE: Tilt phone &mdash; steer</p>
+    <p>MOBILE: Tap screen &mdash; jump</p>
+    <p>MOBILE: If prompted, allow motion access</p>
   </div>
   <button id="start-btn">DROP IN</button>
 </div>
