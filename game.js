@@ -27,10 +27,10 @@ const MAX_SPEED = 1.35;
 const SLOPE_ACCEL = -0.025;
 const SPEED_DECAY = 0.996;
 const KEY_STEER_RATE = 1.25;
-const TILT_STEER_RATE = 1.9;
 const COLLECT_RADIUS = 2.35;
 const COLLECTIBLE_BASE_SCORE = 250;
 const ROUTE_TURNINESS = 0.55;
+const MAX_FORWARD_YAW = 1.22;
 const SHARP_CORNER_WIDTH = 72;
 const SHARP_CORNERS = [
   { z: 980, dir: 1 },
@@ -210,6 +210,7 @@ function seededRandom(seed) {
 }
 
 function lerp(a, b, t) { return a + (b - a) * t; }
+function wrapAngleRad(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }
 
 function disposeObject(obj) {
   if (obj.geometry) obj.geometry.dispose();
@@ -234,30 +235,32 @@ function getHeight(x, z) {
   const slopeMult = lerp(zc.slopeMultiplier, zn.slopeMultiplier, t);
   const hillAmp = lerp(zc.hillAmplitude, zn.hillAmplitude, t);
   const freqX = lerp(zc.hillFreqX, zn.hillFreqX, t);
-  const freqZ = lerp(zc.hillFreqZ, zn.hillFreqZ, t);
   const flat = lerp(zc.flatness, zn.flatness, t);
 
-  // Smooth downhill slope — always goes down, never creates pits
+  // Base downhill grade.
   const baseSlope = -z * slopeMult;
 
-  // Alternating steep/mellow slope sections with occasional dramatic drops.
-  const dramaticWave = 0.5 + 0.5 * Math.sin(z * 0.008 + 1.2);
-  const dramaticFactor = smoothstep(0.45, 0.98, dramaticWave);
-  const pitchRoller = (4.5 + hillAmp * 0.45) * dramaticFactor * Math.sin(z * 0.028 + 0.9) * (1 - flat * 0.55);
-  const mellowRoller = (1.6 + hillAmp * 0.18) * Math.sin(z * 0.011 - 0.6) * (1 - flat * 0.75);
+  // One-way drop zones: each term only increases with z, so total height never ramps upward.
+  const dropScale = 1 - flat * 0.7;
+  const stagedDrops = (
+    1.6 * smoothstep(260, 420, z)
+    + 2.3 * smoothstep(860, 1060, z)
+    + 1.9 * smoothstep(1460, 1660, z)
+    + 2.7 * smoothstep(2260, 2480, z)
+    + 2.2 * smoothstep(3140, 3380, z)
+    + 2.9 * smoothstep(4020, 4250, z)
+    + 2.4 * smoothstep(5000, 5250, z)
+  ) * dropScale;
+  const downhillDrops = -stagedDrops;
 
-  const zone = getZoneForZ(z);
-  const routeCenter = getRouteCenterX(z, zone);
-  const bankStrength = (0.06 + dramaticFactor * 0.06) * (1 - flat * 0.7);
-  const routeBank = (x - routeCenter) * bankStrength;
+  // Side camber and cross-slope texture vary with x only, never creating uphill ramps.
+  const camberStrength = (0.032 + hillAmp * 0.0014) * (1 - flat * 0.65);
+  const routeCamber = x * camberStrength;
 
-  // Gentle rolling hills — only positive bumps, no valleys
-  let hills = hillAmp * 0.5 * (1 + Math.sin(x * freqX + 1.0)) * (1 + Math.cos(z * freqZ)) * 0.25;
-  hills += hillAmp * 0.25 * (1 + Math.sin(x * (freqX * 1.6) - 0.5)) * (1 + Math.sin(z * (freqZ * 1.67) + 2.0)) * 0.25;
-  hills *= (1 - flat);
+  let hills = hillAmp * 0.22 * Math.sin(x * freqX + 0.9) * (1 - flat * 0.72);
+  hills += hillAmp * 0.1 * Math.sin(x * (freqX * 2.1) - 1.2) * (1 - flat * 0.78);
 
-  // Very subtle surface texture (no dips)
-  const noise = 0.15 * noise2D(x * 0.3, z * 0.3) * (1 - flat * 0.8);
+  const noise = (noise2D(x * 0.3, 11.17) - 0.5) * 0.22 * (1 - flat * 0.8);
 
   // Bay zone: gentle dip to water level
   let waterDip = 0;
@@ -266,7 +269,7 @@ function getHeight(x, z) {
     waterDip = -2 * bayT;
   }
 
-  return baseSlope + pitchRoller + mellowRoller + routeBank + hills + noise + waterDip;
+  return baseSlope + downhillDrops + routeCamber + hills + noise + waterDip;
 }
 
 function getTerrainNormal(x, z) {
@@ -1210,25 +1213,14 @@ const playerState = {
 const keys = { left: false, right: false, jump: false };
 const isLikelyMobile = window.matchMedia('(pointer: coarse)').matches
   || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-const TILT_DEAD_ZONE = 0.08;
-const TILT_FULL_TURN_DEG = 18;
-
-let tiltEnabled = false;
-let tiltBaseline = null;
-let tiltSteer = 0;
 let touchJumpQueued = false;
 let steerSmooth = 0;
-let mobileUseTilt = false;
-let tiltListenerAttached = false;
-let tiltSampleCount = 0;
-let tiltProbeTimer = null;
 let mobileStatusTimer = null;
 
 const mobileControlsEl = document.getElementById('mobile-controls');
 const mobileLeftBtn = document.getElementById('mobile-left');
 const mobileRightBtn = document.getElementById('mobile-right');
 const mobileJumpBtn = document.getElementById('mobile-jump');
-const mobileModeBtn = document.getElementById('mobile-mode');
 const mobileStatusEl = document.getElementById('mobile-status');
 
 function setMobileControlsVisible(visible) {
@@ -1238,11 +1230,6 @@ function setMobileControlsVisible(visible) {
     return;
   }
   mobileControlsEl.style.display = visible ? 'block' : 'none';
-}
-
-function updateMobileModeButton() {
-  if (!mobileModeBtn) return;
-  mobileModeBtn.textContent = mobileUseTilt ? 'USE TOUCH' : 'USE TILT';
 }
 
 function setMobileStatus(text, timeoutMs = 2400) {
@@ -1255,98 +1242,6 @@ function setMobileStatus(text, timeoutMs = 2400) {
       if (!mobileStatusEl) return;
       mobileStatusEl.style.opacity = '0.78';
     }, timeoutMs);
-  }
-}
-
-function setMobileTiltMode(enabled) {
-  mobileUseTilt = !!enabled && tiltEnabled;
-  if (mobileUseTilt) {
-    touchLeft = false;
-    touchRight = false;
-    setMobileStatus('TILT STEERING ON • TAP TO JUMP', 1800);
-  } else {
-    tiltSteer = 0;
-    setMobileStatus('TOUCH CONTROLS ON', 1800);
-  }
-  updateMobileModeButton();
-}
-
-function attachTiltListeners() {
-  if (tiltListenerAttached) return;
-  window.addEventListener('deviceorientation', handleDeviceOrientation, true);
-  window.addEventListener('deviceorientationabsolute', handleDeviceOrientation, true);
-  tiltListenerAttached = true;
-}
-
-function startTiltProbe() {
-  if (tiltProbeTimer) clearTimeout(tiltProbeTimer);
-  const baselineSamples = tiltSampleCount;
-  tiltProbeTimer = setTimeout(() => {
-    if (!tiltEnabled) return;
-    if (tiltSampleCount <= baselineSamples) {
-      tiltEnabled = false;
-      setMobileTiltMode(false);
-      setMobileStatus('TILT NOT AVAILABLE • USING TOUCH', 3200);
-    } else {
-      setMobileStatus('TILT READY', 1200);
-    }
-  }, 900);
-}
-
-function getScreenRotationDeg() {
-  if (window.screen && window.screen.orientation && typeof window.screen.orientation.angle === 'number') {
-    return window.screen.orientation.angle;
-  }
-  if (typeof window.orientation === 'number') return window.orientation;
-  return 0;
-}
-
-function handleDeviceOrientation(e) {
-  if (!e) return;
-  const angle = getScreenRotationDeg();
-  let rawTilt = e.gamma;
-
-  // In landscape, beta tends to represent left/right steering better.
-  if (Math.abs(angle) === 90 && typeof e.beta === 'number') {
-    rawTilt = angle === 90 ? -e.beta : e.beta;
-  }
-  if (typeof rawTilt !== 'number') return;
-
-  tiltSampleCount++;
-  if (tiltBaseline === null) tiltBaseline = rawTilt;
-  const delta = rawTilt - tiltBaseline;
-  const normalized = THREE.MathUtils.clamp(-delta / TILT_FULL_TURN_DEG, -1, 1);
-  tiltSteer = Math.abs(normalized) < TILT_DEAD_ZONE ? 0 : normalized;
-}
-
-async function enableTiltControlsFromGesture() {
-  if (!isLikelyMobile || typeof window.DeviceOrientationEvent === 'undefined') return false;
-  if (tiltEnabled) {
-    setMobileTiltMode(true);
-    return true;
-  }
-  try {
-    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-      const response = await DeviceOrientationEvent.requestPermission();
-      if (response !== 'granted') {
-        setMobileTiltMode(false);
-        setMobileStatus('MOTION ACCESS DENIED • USING TOUCH', 3200);
-        return false;
-      }
-    }
-    attachTiltListeners();
-    tiltBaseline = null;
-    tiltSteer = 0;
-    tiltSampleCount = 0;
-    tiltEnabled = true;
-    setMobileTiltMode(true);
-    startTiltProbe();
-    return true;
-  } catch (err) {
-    // Keep touch controls as fallback when sensor permission is unavailable.
-    setMobileTiltMode(false);
-    setMobileStatus('TILT FAILED • USING TOUCH', 3200);
-    return false;
   }
 }
 
@@ -1382,7 +1277,6 @@ function bindHoldControl(button, setPressed) {
 }
 
 if (isLikelyMobile) {
-  updateMobileModeButton();
   bindHoldControl(mobileLeftBtn, (pressed) => { touchLeft = pressed; });
   bindHoldControl(mobileRightBtn, (pressed) => { touchRight = pressed; });
   if (mobileJumpBtn) {
@@ -1392,16 +1286,6 @@ if (isLikelyMobile) {
       touchJumpQueued = true;
     }, { passive: false });
   }
-  if (mobileModeBtn) {
-    mobileModeBtn.addEventListener('pointerdown', async (e) => {
-      e.preventDefault();
-      if (mobileUseTilt) {
-        setMobileTiltMode(false);
-      } else {
-        await enableTiltControlsFromGesture();
-      }
-    }, { passive: false });
-  }
 }
 
 window.addEventListener('touchstart', (e) => {
@@ -1409,13 +1293,7 @@ window.addEventListener('touchstart', (e) => {
   if (isLikelyMobile) e.preventDefault();
 
   if (state === GameState.MENU) {
-    void enableTiltControlsFromGesture();
     startGame();
-    return;
-  }
-
-  if (isLikelyMobile && mobileUseTilt && tiltEnabled) {
-    touchJumpQueued = true;
     return;
   }
 
@@ -1473,15 +1351,15 @@ function updatePlayer(dt) {
   const wantJump = keys.jump || touchJump || touchJumpQueued;
 
   const digitalSteer = (steerLeft ? 1 : 0) - (steerRight ? 1 : 0);
-  const usingTilt = tiltEnabled && (!isLikelyMobile || mobileUseTilt);
-  const tiltInput = usingTilt ? tiltSteer : 0;
-  const targetSteer = THREE.MathUtils.clamp(digitalSteer + tiltInput, -1, 1);
+  const targetSteer = THREE.MathUtils.clamp(digitalSteer, -1, 1);
   steerSmooth = THREE.MathUtils.lerp(steerSmooth, targetSteer, Math.min(1, 8 * dt));
-  const steerRate = usingTilt ? TILT_STEER_RATE : KEY_STEER_RATE;
+  const steerRate = KEY_STEER_RATE;
   playerState.rotation += steerSmooth * steerRate * dt;
   const routeTurn = getRouteTurnSignal(pos.z);
   const cornerTurn = getSharpCornerSignal(pos.z);
   playerState.rotation -= (routeTurn * ROUTE_TURNINESS + cornerTurn * 1.95) * dt;
+  playerState.rotation = wrapAngleRad(playerState.rotation);
+  playerState.rotation = THREE.MathUtils.clamp(playerState.rotation, -MAX_FORWARD_YAW, MAX_FORWARD_YAW);
 
   // Slope-based acceleration
   const hHere = getHeight(pos.x, pos.z);
@@ -1976,7 +1854,6 @@ function startGame() {
   touchRight = false;
   touchJump = false;
   touchJumpQueued = false;
-  tiltBaseline = null;
   steerSmooth = 0;
   collectibleCombo = 0;
   collectibleComboTimer = 0;
@@ -2021,10 +1898,7 @@ function startGame() {
   winScreen.style.display = 'none';
   hudEl.style.display = 'block';
   setMobileControlsVisible(true);
-  if (isLikelyMobile && !mobileUseTilt) {
-    setMobileStatus('TOUCH CONTROLS ON • TAP USE TILT FOR GYRO', 2600);
-  }
-  updateMobileModeButton();
+  if (isLikelyMobile) setMobileStatus('TOUCH CONTROLS ON', 2200);
   state = GameState.PLAYING;
 }
 
@@ -2048,16 +1922,13 @@ function winGame() {
 }
 
 // ── Button Handlers ──────────────────────────────────────────
-document.getElementById('start-btn').addEventListener('click', async () => {
-  await enableTiltControlsFromGesture();
+document.getElementById('start-btn').addEventListener('click', () => {
   startGame();
 });
-document.getElementById('restart-btn').addEventListener('click', async () => {
-  await enableTiltControlsFromGesture();
+document.getElementById('restart-btn').addEventListener('click', () => {
   startGame();
 });
-document.getElementById('play-again-btn').addEventListener('click', async () => {
-  await enableTiltControlsFromGesture();
+document.getElementById('play-again-btn').addEventListener('click', () => {
   startGame();
 });
 

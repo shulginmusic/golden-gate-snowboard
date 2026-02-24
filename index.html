@@ -163,14 +163,6 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
   height: 72px;
   font-size: 22px;
 }
-#mobile-mode {
-  position: absolute;
-  right: 12px;
-  bottom: calc(94px + env(safe-area-inset-bottom, 0px));
-  height: 44px;
-  padding: 0 14px;
-  font-size: 14px;
-}
 #mobile-status {
   position: absolute;
   left: 12px;
@@ -249,7 +241,7 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
     <p>&larr; &rarr; / A D &mdash; Steer</p>
     <p>SPACE &mdash; Jump</p>
     <p>MOBILE: Use on-screen LEFT / RIGHT / JUMP</p>
-    <p>MOBILE: Tap USE TILT for gyro steering</p>
+    <p>MOBILE: Hold LEFT / RIGHT, tap JUMP</p>
   </div>
   <button id="start-btn">DROP IN</button>
 </div>
@@ -268,7 +260,6 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
 <!-- Mobile Controls -->
 <div id="mobile-controls" aria-hidden="true">
   <div id="mobile-status">TOUCH CONTROLS</div>
-  <button id="mobile-mode" type="button">USE TILT</button>
   <div class="mobile-row">
     <button id="mobile-left" type="button">LEFT</button>
     <button id="mobile-jump" type="button">JUMP</button>
