@@ -128,6 +128,63 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
   letter-spacing: 4px;
 }
 
+/* ── Mobile Controls ── */
+#mobile-controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: none;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+}
+#mobile-controls .mobile-row {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr 1fr;
+  gap: 10px;
+}
+#mobile-controls button {
+  pointer-events: auto;
+  border: 2px solid rgba(255, 238, 221, 0.88);
+  background: rgba(28, 16, 10, 0.66);
+  color: #ffeedd;
+  border-radius: 16px;
+  font-family: 'Righteous', sans-serif;
+  letter-spacing: 1px;
+  touch-action: manipulation;
+  user-select: none;
+}
+#mobile-left, #mobile-right {
+  height: 64px;
+  font-size: 20px;
+}
+#mobile-jump {
+  height: 72px;
+  font-size: 22px;
+}
+#mobile-mode {
+  position: absolute;
+  right: 12px;
+  bottom: calc(94px + env(safe-area-inset-bottom, 0px));
+  height: 44px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+#mobile-status {
+  position: absolute;
+  left: 12px;
+  bottom: calc(102px + env(safe-area-inset-bottom, 0px));
+  background: rgba(17, 8, 5, 0.6);
+  border: 1px solid rgba(255, 238, 221, 0.5);
+  border-radius: 10px;
+  color: #ffeedd;
+  font-size: 12px;
+  padding: 6px 9px;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+}
+
 /* ── Game Over ── */
 #game-over {
   position: fixed; inset: 0; z-index: 10;
@@ -191,9 +248,8 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
   <div class="controls-info">
     <p>&larr; &rarr; / A D &mdash; Steer</p>
     <p>SPACE &mdash; Jump</p>
-    <p>MOBILE: Tilt phone &mdash; steer</p>
-    <p>MOBILE: Tap screen &mdash; jump</p>
-    <p>MOBILE: If prompted, allow motion access</p>
+    <p>MOBILE: Use on-screen LEFT / RIGHT / JUMP</p>
+    <p>MOBILE: Tap USE TILT for gyro steering</p>
   </div>
   <button id="start-btn">DROP IN</button>
 </div>
@@ -207,6 +263,17 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
   <div id="hud-lives"></div>
   <div id="hud-bonus"></div>
   <div id="hud-zone-banner"></div>
+</div>
+
+<!-- Mobile Controls -->
+<div id="mobile-controls" aria-hidden="true">
+  <div id="mobile-status">TOUCH CONTROLS</div>
+  <button id="mobile-mode" type="button">USE TILT</button>
+  <div class="mobile-row">
+    <button id="mobile-left" type="button">LEFT</button>
+    <button id="mobile-jump" type="button">JUMP</button>
+    <button id="mobile-right" type="button">RIGHT</button>
+  </div>
 </div>
 
 <!-- Game Over -->

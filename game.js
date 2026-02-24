@@ -31,6 +31,14 @@ const TILT_STEER_RATE = 1.9;
 const COLLECT_RADIUS = 2.35;
 const COLLECTIBLE_BASE_SCORE = 250;
 const ROUTE_TURNINESS = 0.55;
+const SHARP_CORNER_WIDTH = 72;
+const SHARP_CORNERS = [
+  { z: 980, dir: 1 },
+  { z: 1920, dir: -1 },
+  { z: 3060, dir: 1 },
+  { z: 4260, dir: -1 },
+  { z: 5380, dir: 1 },
+];
 
 // ── Zone Definitions ─────────────────────────────────────────
 const ZONES = [
@@ -40,7 +48,7 @@ const ZONES = [
     streetWidth: 30, buildingInset: 16,
     obstaclesPerChunk: [2, 3], collectiblesPerChunk: [3, 4],
     slopeMultiplier: 0.08, hillAmplitude: 14, hillFreqX: 0.025, hillFreqZ: 0.018, flatness: 0.0,
-    obstacleWeights: { trolley: 0, car: 0.3, pedestrian: 0.7, tacoTruck: 0, vwVan: 0 },
+    obstacleWeights: { car: 0.45, dogWalker: 0.25, limeScooter: 0.2, van: 0.1 },
     buildingType: 'victorian', victorianDensity: 0.95,
     fogColor: 0x87ceeb, fogDensity: 0.003, skyColor: 0x87ceeb,
     hasRainbowCrosswalks: false, hasMurals: false,
@@ -51,7 +59,7 @@ const ZONES = [
     streetWidth: 18, buildingInset: 10,
     obstaclesPerChunk: [3, 5], collectiblesPerChunk: [2, 3],
     slopeMultiplier: 0.11, hillAmplitude: 10, hillFreqX: 0.03, hillFreqZ: 0.025, flatness: 0.2,
-    obstacleWeights: { trolley: 0.25, car: 0.3, pedestrian: 0.45, tacoTruck: 0, vwVan: 0 },
+    obstacleWeights: { car: 0.35, dogWalker: 0.35, limeScooter: 0.2, van: 0.1 },
     buildingType: 'victorian', victorianDensity: 0.85,
     fogColor: 0x7ec8e3, fogDensity: 0.003, skyColor: 0x7ec8e3,
     hasRainbowCrosswalks: true, hasMurals: false,
@@ -62,7 +70,7 @@ const ZONES = [
     streetWidth: 14, buildingInset: 8,
     obstaclesPerChunk: [4, 7], collectiblesPerChunk: [2, 3],
     slopeMultiplier: 0.12, hillAmplitude: 8, hillFreqX: 0.035, hillFreqZ: 0.03, flatness: 0.3,
-    obstacleWeights: { trolley: 0.1, car: 0.3, pedestrian: 0.3, tacoTruck: 0.3, vwVan: 0 },
+    obstacleWeights: { car: 0.32, dogWalker: 0.28, limeScooter: 0.24, van: 0.16 },
     buildingType: 'mural', victorianDensity: 0.8,
     fogColor: 0x80c4e0, fogDensity: 0.003, skyColor: 0x80c4e0,
     hasRainbowCrosswalks: false, hasMurals: true,
@@ -70,10 +78,10 @@ const ZONES = [
   {
     id: 'haight', name: 'THE HAIGHT',
     zStart: 3520, zEnd: 4640,
-    streetWidth: 12, buildingInset: 7,
+    streetWidth: 14, buildingInset: 7,
     obstaclesPerChunk: [5, 9], collectiblesPerChunk: [2, 2],
     slopeMultiplier: 0.16, hillAmplitude: 14, hillFreqX: 0.04, hillFreqZ: 0.035, flatness: 0.1,
-    obstacleWeights: { trolley: 0.05, car: 0.2, pedestrian: 0.3, tacoTruck: 0, vwVan: 0.45 },
+    obstacleWeights: { car: 0.28, dogWalker: 0.27, limeScooter: 0.25, van: 0.2 },
     buildingType: 'psychedelic', victorianDensity: 1.0,
     fogColor: 0x88b8d8, fogDensity: 0.003, skyColor: 0x88b8d8,
     hasRainbowCrosswalks: false, hasMurals: false,
@@ -84,7 +92,7 @@ const ZONES = [
     streetWidth: 22, buildingInset: 12,
     obstaclesPerChunk: [6, 10], collectiblesPerChunk: [1, 2],
     slopeMultiplier: 0.03, hillAmplitude: 1, hillFreqX: 0.01, hillFreqZ: 0.01, flatness: 0.85,
-    obstacleWeights: { trolley: 0.2, car: 0.5, pedestrian: 0.3, tacoTruck: 0, vwVan: 0 },
+    obstacleWeights: { car: 0.45, dogWalker: 0.25, limeScooter: 0.15, van: 0.15 },
     buildingType: 'pier', victorianDensity: 0,
     fogColor: 0x6eb5d9, fogDensity: 0.003, skyColor: 0x6eb5d9,
     hasRainbowCrosswalks: false, hasMurals: false,
@@ -92,10 +100,10 @@ const ZONES = [
   {
     id: 'bay', name: 'THE BAY',
     zStart: 5760, zEnd: 6400,
-    streetWidth: 10, buildingInset: 6,
+    streetWidth: 12, buildingInset: 6,
     obstaclesPerChunk: [2, 4], collectiblesPerChunk: [1, 2],
     slopeMultiplier: 0.03, hillAmplitude: 0, hillFreqX: 0, hillFreqZ: 0, flatness: 1.0,
-    obstacleWeights: { trolley: 0, car: 0.2, pedestrian: 0.8, tacoTruck: 0, vwVan: 0 },
+    obstacleWeights: { car: 0.3, dogWalker: 0.45, limeScooter: 0.2, van: 0.05 },
     buildingType: 'pier', victorianDensity: 0,
     fogColor: 0x60a8d0, fogDensity: 0.003, skyColor: 0x60a8d0,
     hasRainbowCrosswalks: false, hasMurals: false,
@@ -113,9 +121,31 @@ function getRouteTurnSignal(z) {
   return Math.sin(z * 0.0065) * 0.6 + Math.sin(z * 0.017 + 1.4) * 0.32;
 }
 
+function getSharpCornerSignal(z) {
+  let signal = 0;
+  for (const corner of SHARP_CORNERS) {
+    const dz = z - corner.z;
+    if (Math.abs(dz) > SHARP_CORNER_WIDTH) continue;
+    const phase = 1 - Math.abs(dz) / SHARP_CORNER_WIDTH;
+    signal += corner.dir * Math.sin(phase * Math.PI);
+  }
+  return THREE.MathUtils.clamp(signal, -1, 1);
+}
+
 function getRouteCenterX(z, zone) {
   const halfStreet = zone.streetWidth / 2;
-  return getRouteTurnSignal(z) * halfStreet * 0.42;
+  const rolling = getRouteTurnSignal(z) * halfStreet * 0.34;
+
+  let cornerOffset = 0;
+  for (const corner of SHARP_CORNERS) {
+    const start = corner.z - SHARP_CORNER_WIDTH * 0.48;
+    const end = corner.z + SHARP_CORNER_WIDTH * 0.48;
+    const step = smoothstep(start, end, z);
+    cornerOffset += corner.dir * step * halfStreet * 0.82;
+  }
+
+  const clampedOffset = THREE.MathUtils.clamp(cornerOffset, -halfStreet * 0.84, halfStreet * 0.84);
+  return rolling + clampedOffset;
 }
 
 function getZoneBlend(z) {
@@ -255,7 +285,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 1.08;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -269,7 +299,7 @@ camera.position.set(0, 10, -5);
 const ambientLight = new THREE.AmbientLight(0xccddff, 0.8);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xfff8e0, 0.9);
+const dirLight = new THREE.DirectionalLight(0xf3f8ff, 0.9);
 dirLight.position.set(-50, 100, -50);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.set(2048, 2048);
@@ -295,7 +325,7 @@ const seventiesShader = {
   uniforms: {
     tDiffuse: { value: null },
     vignetteAmount: { value: 0.45 },
-    warmth: { value: 0.04 },
+    warmth: { value: 0.0 },
     desaturation: { value: 0.12 },
   },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
@@ -319,7 +349,12 @@ composer.addPass(new ShaderPass(seventiesShader));
 
 // ── Shared Materials ─────────────────────────────────────────
 const terrainMaterial = new THREE.MeshStandardMaterial({
-  color: 0xe8e8f0, roughness: 0.9, metalness: 0.0, flatShading: false,
+  color: 0xffffff,
+  emissive: 0xffffff,
+  emissiveIntensity: 0.18,
+  roughness: 0.8,
+  metalness: 0.0,
+  flatShading: false,
 });
 
 const victorianPastelColors = [0xf8b4c8, 0xd8b4f8, 0xb4f8d0, 0xfff8d0, 0xb4d8f8, 0xf8e8b4];
@@ -328,7 +363,7 @@ const victorianTrimColors = [0xffffff, 0xf0e0c0, 0xd4a0a0, 0xa0b0d4];
 const colors70sCars = [0x6b8e23, 0xcc6633, 0xdaa520, 0x8b4513, 0xb22222, 0xf5deb3];
 const colorsBuildings = [0xd4a373, 0xa8b5a2, 0xc9b1a0, 0x8fa3b0, 0xe8d5b7, 0xb5838d];
 const muralColors = [0xcc3344, 0x3344cc, 0x44cc33, 0xccaa33, 0xcc33aa, 0x33ccaa];
-const vwColors = [0x44aa88, 0xdd8844, 0x8844aa, 0xaadd44, 0xdd4488];
+const vanColors = [0xd2d5da, 0xc7ccd3, 0xe0e2e6, 0xadb3bd, 0xbec4cc];
 
 const winMat = new THREE.MeshStandardMaterial({ color: 0x334455, flatShading: false });
 const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, flatShading: false });
@@ -614,12 +649,13 @@ function createCar() {
   g.userData.bbox = new THREE.Box3().setFromCenterAndSize(
     new THREE.Vector3(0, 0.8, 0), new THREE.Vector3(2.0, 1.8, 3.8)
   );
+  g.userData.obstacleType = 'car';
   return g;
 }
 
-function createPedestrian() {
+function createDogWalker() {
   const g = new THREE.Group();
-  const jacketColors = [0x883322, 0x225577, 0x556633, 0x774433, 0x993366];
+  const jacketColors = [0x556677, 0x445566, 0x667766, 0x775544];
   const jacketColor = jacketColors[Math.floor(Math.random() * jacketColors.length)];
   const bodyMat = new THREE.MeshStandardMaterial({ color: jacketColor, flatShading: false });
   const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.7, 14), bodyMat);
@@ -635,19 +671,71 @@ function createPedestrian() {
     leg.position.set(xOff, 0.25, 0); g.add(leg);
   }
 
-  const umbrellaColors = [0xcc2222, 0x2244aa, 0x22aa44, 0xaa8822];
-  const umbrellaColor = umbrellaColors[Math.floor(Math.random() * umbrellaColors.length)];
-  const umbrellaMat = new THREE.MeshStandardMaterial({ color: umbrellaColor, flatShading: false, side: THREE.DoubleSide });
-  const umbrella = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.3, 18, 1, true), umbrellaMat);
-  umbrella.rotation.x = Math.PI; umbrella.position.set(0.1, 1.75, 0); g.add(umbrella);
+  const armMat = new THREE.MeshStandardMaterial({ color: 0x445566, flatShading: false });
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.55, 10), armMat);
+  arm.position.set(0.24, 0.85, 0);
+  arm.rotation.z = -0.45;
+  g.add(arm);
 
-  const handleMat = new THREE.MeshStandardMaterial({ color: 0x444444, flatShading: false });
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 10), handleMat);
-  handle.position.set(0.1, 1.45, 0); g.add(handle);
+  const leashMat = new THREE.MeshStandardMaterial({ color: 0x2f2f2f, flatShading: false });
+  const leash = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.8, 8), leashMat);
+  leash.position.set(0.56, 0.65, 0.15);
+  leash.rotation.z = -1.05;
+  leash.rotation.y = 0.2;
+  g.add(leash);
+
+  const dogBodyMat = new THREE.MeshStandardMaterial({ color: 0x8a6b4f, flatShading: false });
+  const dogBody = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.28, 0.28), dogBodyMat);
+  dogBody.position.set(0.95, 0.3, 0.26);
+  g.add(dogBody);
+
+  const dogHead = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), dogBodyMat);
+  dogHead.position.set(1.23, 0.38, 0.28);
+  g.add(dogHead);
+
+  for (const legPos of [[0.78, 0.14], [1.1, 0.14], [0.78, 0.38], [1.1, 0.38]]) {
+    const dogLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.24, 8), dogBodyMat);
+    dogLeg.position.set(legPos[0], 0.12, legPos[1]);
+    g.add(dogLeg);
+  }
 
   g.userData.bbox = new THREE.Box3().setFromCenterAndSize(
-    new THREE.Vector3(0, 0.75, 0), new THREE.Vector3(0.6, 1.5, 0.6)
+    new THREE.Vector3(0.62, 0.68, 0.2), new THREE.Vector3(1.6, 1.45, 0.85)
   );
+  g.userData.obstacleType = 'dogWalker';
+  g.userData.moveYaw = Math.PI * 0.5;
+  return g;
+}
+
+function createLimeScooter() {
+  const g = new THREE.Group();
+  const limeMat = new THREE.MeshStandardMaterial({ color: 0x3ddc4a, flatShading: false });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x1f2427, flatShading: false });
+
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.08, 1.15), limeMat);
+  deck.position.y = 0.12;
+  g.add(deck);
+
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 1.05, 10), limeMat);
+  stem.position.set(0, 0.66, -0.44);
+  stem.rotation.x = 0.1;
+  g.add(stem);
+
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.05), darkMat);
+  bar.position.set(0, 1.15, -0.45);
+  g.add(bar);
+
+  for (const zOff of [-0.42, 0.42]) {
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.07, 12), darkMat);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(0, 0.12, zOff);
+    g.add(wheel);
+  }
+
+  g.userData.bbox = new THREE.Box3().setFromCenterAndSize(
+    new THREE.Vector3(0, 0.62, 0), new THREE.Vector3(0.7, 1.3, 1.25)
+  );
+  g.userData.obstacleType = 'limeScooter';
   return g;
 }
 
@@ -680,26 +768,26 @@ function createTacoTruck() {
   return g;
 }
 
-function createVWVan() {
+function createCityVan() {
   const g = new THREE.Group();
-  const color = vwColors[Math.floor(Math.random() * vwColors.length)];
+  const color = vanColors[Math.floor(Math.random() * vanColors.length)];
   const bodyMat = new THREE.MeshStandardMaterial({ color, flatShading: false });
-  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf0f0e8, flatShading: false });
+  const trimMatVan = new THREE.MeshStandardMaterial({ color: 0x87909a, flatShading: false });
 
   const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.8, 3.2), bodyMat);
   body.position.y = 1.3; body.castShadow = true; g.add(body);
 
-  const top = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.8, 3.0), whiteMat);
-  top.position.y = 2.6; g.add(top);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.24, 3.05), trimMatVan);
+  roof.position.y = 2.2; g.add(roof);
 
   const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.9, 0.05), winMat);
   windshield.position.set(0, 2.2, -1.62); g.add(windshield);
 
-  // Peace symbol on side (simple circle + lines)
-  const peaceMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: false });
-  const peaceCircle = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.42, 24), peaceMat);
-  peaceCircle.position.set(1.01, 1.5, 0); peaceCircle.rotation.y = Math.PI / 2;
-  g.add(peaceCircle);
+  const sidePanel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.8, 2.2), trimMatVan);
+  sidePanel.position.set(1.02, 1.42, 0); g.add(sidePanel);
+  const sidePanel2 = sidePanel.clone();
+  sidePanel2.position.x = -1.02;
+  g.add(sidePanel2);
 
   for (const xOff of [-0.9, 0.9]) {
     for (const zOff of [-1.1, 1.1]) {
@@ -710,6 +798,7 @@ function createVWVan() {
   g.userData.bbox = new THREE.Box3().setFromCenterAndSize(
     new THREE.Vector3(0, 1.5, 0), new THREE.Vector3(2.2, 3.2, 3.6)
   );
+  g.userData.obstacleType = 'van';
   return g;
 }
 
@@ -770,23 +859,47 @@ function populateChunk(chunk) {
   // ── Obstacles ──
   const [minObs, maxObs] = zone.obstaclesPerChunk;
   const baseObstacleCount = minObs + Math.floor(rng() * (maxObs - minObs + 1));
-  const obstacleCount = Math.max(1, Math.round(baseObstacleCount * OBSTACLE_DENSITY));
+  const widthScale = THREE.MathUtils.clamp(zone.streetWidth / 20, 0.58, 1.08);
+  const chunkCornerIntensity = Math.abs(getSharpCornerSignal(zMin + CHUNK_DEPTH * 0.5));
+  const cornerScale = 1 - chunkCornerIntensity * 0.45;
+  const obstacleCount = Math.max(1, Math.round(baseObstacleCount * OBSTACLE_DENSITY * widthScale * cornerScale));
 
   for (let i = 0; i < obstacleCount; i++) {
     const r = rng();
     let obj;
     const w = zone.obstacleWeights;
     let cum = 0;
-    if (r < (cum += w.trolley)) obj = createTrolley();
-    else if (r < (cum += w.car)) obj = createCar();
-    else if (r < (cum += w.pedestrian)) obj = createPedestrian();
-    else if (r < (cum += w.tacoTruck)) obj = createTacoTruck();
-    else obj = createVWVan();
+    if (r < (cum += w.car)) obj = createCar();
+    else if (r < (cum += w.dogWalker)) obj = createDogWalker();
+    else if (r < (cum += w.limeScooter)) obj = createLimeScooter();
+    else obj = createCityVan();
 
-    const x = (rng() - 0.5) * halfStreet * 1.4;
+    const roadHalf = Math.max(1.3, halfStreet - 0.9);
     const z = zMin + rng() * CHUNK_DEPTH;
+    const cornerIntensity = Math.abs(getSharpCornerSignal(z));
+    const routeCenter = getRouteCenterX(z, zone);
+    const centerBuffer = 1.0 + cornerIntensity * 2.0;
+    let x = routeCenter;
+    for (let tries = 0; tries < 6; tries++) {
+      const candidate = (rng() - 0.5) * roadHalf * 2;
+      if (Math.abs(candidate - routeCenter) >= centerBuffer || tries === 5) {
+        x = candidate;
+        break;
+      }
+    }
     obj.position.set(x, getHeight(x, z), z);
-    obj.rotation.y = rng() * Math.PI * 2;
+
+    const type = obj.userData.obstacleType;
+    if (type === 'car' || type === 'van' || type === 'limeScooter') {
+      const dir = rng() < 0.5 ? 0 : Math.PI;
+      obj.rotation.y = dir + (rng() - 0.5) * 0.18;
+    } else if (type === 'dogWalker') {
+      const cross = obj.userData.moveYaw || (Math.PI * 0.5);
+      obj.rotation.y = cross + (rng() - 0.5) * 0.5;
+    } else {
+      obj.rotation.y = rng() * Math.PI * 2;
+    }
+
     scene.add(obj);
     chunk.obstacles.push(obj);
   }
@@ -813,7 +926,8 @@ function populateChunk(chunk) {
 
       const footprintHalfWidth = building.userData.footprintHalfWidth || 2.5;
       const sidewalkGap = zone.buildingType === 'pier' ? 2.4 : 1.8;
-      const minOffset = Math.max(zone.buildingInset, halfStreet + sidewalkGap + footprintHalfWidth);
+      const narrowStreetRelief = THREE.MathUtils.clamp((16 - zone.streetWidth) * 0.18, 0, 1.3);
+      const minOffset = Math.max(zone.buildingInset, halfStreet + sidewalkGap + footprintHalfWidth) + narrowStreetRelief;
       const x = side * (minOffset + rng() * 1.6);
       const z = zMin + (i / buildingsPerSide) * CHUNK_DEPTH + rng() * (CHUNK_DEPTH / buildingsPerSide) * 0.8;
       building.position.set(x, getHeight(x, z), z);
@@ -1104,6 +1218,80 @@ let tiltBaseline = null;
 let tiltSteer = 0;
 let touchJumpQueued = false;
 let steerSmooth = 0;
+let mobileUseTilt = false;
+let tiltListenerAttached = false;
+let tiltSampleCount = 0;
+let tiltProbeTimer = null;
+let mobileStatusTimer = null;
+
+const mobileControlsEl = document.getElementById('mobile-controls');
+const mobileLeftBtn = document.getElementById('mobile-left');
+const mobileRightBtn = document.getElementById('mobile-right');
+const mobileJumpBtn = document.getElementById('mobile-jump');
+const mobileModeBtn = document.getElementById('mobile-mode');
+const mobileStatusEl = document.getElementById('mobile-status');
+
+function setMobileControlsVisible(visible) {
+  if (!mobileControlsEl) return;
+  if (!isLikelyMobile) {
+    mobileControlsEl.style.display = 'none';
+    return;
+  }
+  mobileControlsEl.style.display = visible ? 'block' : 'none';
+}
+
+function updateMobileModeButton() {
+  if (!mobileModeBtn) return;
+  mobileModeBtn.textContent = mobileUseTilt ? 'USE TOUCH' : 'USE TILT';
+}
+
+function setMobileStatus(text, timeoutMs = 2400) {
+  if (!mobileStatusEl) return;
+  mobileStatusEl.textContent = text;
+  mobileStatusEl.style.opacity = '0.95';
+  if (mobileStatusTimer) clearTimeout(mobileStatusTimer);
+  if (timeoutMs > 0) {
+    mobileStatusTimer = setTimeout(() => {
+      if (!mobileStatusEl) return;
+      mobileStatusEl.style.opacity = '0.78';
+    }, timeoutMs);
+  }
+}
+
+function setMobileTiltMode(enabled) {
+  mobileUseTilt = !!enabled && tiltEnabled;
+  if (mobileUseTilt) {
+    touchLeft = false;
+    touchRight = false;
+    setMobileStatus('TILT STEERING ON • TAP TO JUMP', 1800);
+  } else {
+    tiltSteer = 0;
+    setMobileStatus('TOUCH CONTROLS ON', 1800);
+  }
+  updateMobileModeButton();
+}
+
+function attachTiltListeners() {
+  if (tiltListenerAttached) return;
+  window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+  window.addEventListener('deviceorientationabsolute', handleDeviceOrientation, true);
+  tiltListenerAttached = true;
+}
+
+function startTiltProbe() {
+  if (tiltProbeTimer) clearTimeout(tiltProbeTimer);
+  const baselineSamples = tiltSampleCount;
+  tiltProbeTimer = setTimeout(() => {
+    if (!tiltEnabled) return;
+    if (tiltSampleCount <= baselineSamples) {
+      tiltEnabled = false;
+      setMobileTiltMode(false);
+      setMobileStatus('TILT NOT AVAILABLE • USING TOUCH', 3200);
+    } else {
+      setMobileStatus('TILT READY', 1200);
+    }
+  }, 900);
+}
 
 function getScreenRotationDeg() {
   if (window.screen && window.screen.orientation && typeof window.screen.orientation.angle === 'number') {
@@ -1124,6 +1312,7 @@ function handleDeviceOrientation(e) {
   }
   if (typeof rawTilt !== 'number') return;
 
+  tiltSampleCount++;
   if (tiltBaseline === null) tiltBaseline = rawTilt;
   const delta = rawTilt - tiltBaseline;
   const normalized = THREE.MathUtils.clamp(-delta / TILT_FULL_TURN_DEG, -1, 1);
@@ -1131,18 +1320,33 @@ function handleDeviceOrientation(e) {
 }
 
 async function enableTiltControlsFromGesture() {
-  if (!isLikelyMobile || tiltEnabled || typeof window.DeviceOrientationEvent === 'undefined') return;
+  if (!isLikelyMobile || typeof window.DeviceOrientationEvent === 'undefined') return false;
+  if (tiltEnabled) {
+    setMobileTiltMode(true);
+    return true;
+  }
   try {
     if (typeof DeviceOrientationEvent.requestPermission === 'function') {
       const response = await DeviceOrientationEvent.requestPermission();
-      if (response !== 'granted') return;
+      if (response !== 'granted') {
+        setMobileTiltMode(false);
+        setMobileStatus('MOTION ACCESS DENIED • USING TOUCH', 3200);
+        return false;
+      }
     }
-    window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+    attachTiltListeners();
     tiltBaseline = null;
     tiltSteer = 0;
+    tiltSampleCount = 0;
     tiltEnabled = true;
+    setMobileTiltMode(true);
+    startTiltProbe();
+    return true;
   } catch (err) {
     // Keep touch controls as fallback when sensor permission is unavailable.
+    setMobileTiltMode(false);
+    setMobileStatus('TILT FAILED • USING TOUCH', 3200);
+    return false;
   }
 }
 
@@ -1159,20 +1363,63 @@ window.addEventListener('keyup', (e) => {
 });
 
 let touchLeft = false, touchRight = false, touchJump = false;
+
+function bindHoldControl(button, setPressed) {
+  if (!button) return;
+  const press = (e) => {
+    if (state !== GameState.PLAYING) return;
+    e.preventDefault();
+    setPressed(true);
+  };
+  const release = (e) => {
+    if (e) e.preventDefault();
+    setPressed(false);
+  };
+  button.addEventListener('pointerdown', press, { passive: false });
+  button.addEventListener('pointerup', release, { passive: false });
+  button.addEventListener('pointercancel', release, { passive: false });
+  button.addEventListener('pointerleave', release, { passive: false });
+}
+
+if (isLikelyMobile) {
+  updateMobileModeButton();
+  bindHoldControl(mobileLeftBtn, (pressed) => { touchLeft = pressed; });
+  bindHoldControl(mobileRightBtn, (pressed) => { touchRight = pressed; });
+  if (mobileJumpBtn) {
+    mobileJumpBtn.addEventListener('pointerdown', (e) => {
+      if (state !== GameState.PLAYING) return;
+      e.preventDefault();
+      touchJumpQueued = true;
+    }, { passive: false });
+  }
+  if (mobileModeBtn) {
+    mobileModeBtn.addEventListener('pointerdown', async (e) => {
+      e.preventDefault();
+      if (mobileUseTilt) {
+        setMobileTiltMode(false);
+      } else {
+        await enableTiltControlsFromGesture();
+      }
+    }, { passive: false });
+  }
+}
+
 window.addEventListener('touchstart', (e) => {
   if (state === GameState.GAMEOVER || state === GameState.WIN) return;
   if (isLikelyMobile) e.preventDefault();
-  void enableTiltControlsFromGesture();
 
   if (state === GameState.MENU) {
+    void enableTiltControlsFromGesture();
     startGame();
     return;
   }
 
-  if (isLikelyMobile && tiltEnabled) {
+  if (isLikelyMobile && mobileUseTilt && tiltEnabled) {
     touchJumpQueued = true;
     return;
   }
+
+  if (isLikelyMobile) return;
 
   for (const touch of e.changedTouches) {
     const x = touch.clientX / window.innerWidth;
@@ -1183,7 +1430,7 @@ window.addEventListener('touchstart', (e) => {
 }, { passive: false });
 window.addEventListener('touchend', (e) => {
   if (state === GameState.GAMEOVER || state === GameState.WIN) return;
-  if (isLikelyMobile && tiltEnabled) {
+  if (isLikelyMobile) {
     e.preventDefault();
     return;
   }
@@ -1226,13 +1473,15 @@ function updatePlayer(dt) {
   const wantJump = keys.jump || touchJump || touchJumpQueued;
 
   const digitalSteer = (steerLeft ? 1 : 0) - (steerRight ? 1 : 0);
-  const tiltInput = tiltEnabled ? tiltSteer : 0;
+  const usingTilt = tiltEnabled && (!isLikelyMobile || mobileUseTilt);
+  const tiltInput = usingTilt ? tiltSteer : 0;
   const targetSteer = THREE.MathUtils.clamp(digitalSteer + tiltInput, -1, 1);
   steerSmooth = THREE.MathUtils.lerp(steerSmooth, targetSteer, Math.min(1, 8 * dt));
-  const steerRate = tiltEnabled ? TILT_STEER_RATE : KEY_STEER_RATE;
+  const steerRate = usingTilt ? TILT_STEER_RATE : KEY_STEER_RATE;
   playerState.rotation += steerSmooth * steerRate * dt;
   const routeTurn = getRouteTurnSignal(pos.z);
-  playerState.rotation -= routeTurn * ROUTE_TURNINESS * dt;
+  const cornerTurn = getSharpCornerSignal(pos.z);
+  playerState.rotation -= (routeTurn * ROUTE_TURNINESS + cornerTurn * 1.95) * dt;
 
   // Slope-based acceleration
   const hHere = getHeight(pos.x, pos.z);
@@ -1258,7 +1507,9 @@ function updatePlayer(dt) {
 
   // Move forward
   const moveSpeed = playerState.speed * 60 * dt;
-  pos.z += Math.cos(playerState.rotation) * moveSpeed;
+  const minForwardStep = moveSpeed * 0.24;
+  const forwardStep = Math.max(minForwardStep, Math.cos(playerState.rotation) * moveSpeed);
+  pos.z += forwardStep;
   pos.x += Math.sin(playerState.rotation) * moveSpeed;
   zone = getZoneForZ(pos.z);
   const routeCenter = getRouteCenterX(pos.z, zone);
@@ -1282,7 +1533,8 @@ function updatePlayer(dt) {
 
   // Zone-aware X clamp
   const halfStreet = zone.streetWidth / 2;
-  const shoulderPadding = 1.4;
+  const cornerIntensity = Math.abs(cornerTurn);
+  const shoulderPadding = THREE.MathUtils.lerp(1.35, 0.65, cornerIntensity);
   const rideLimit = Math.max(1.5, halfStreet - shoulderPadding);
   pos.x = Math.max(-rideLimit, Math.min(rideLimit, pos.x));
 
@@ -1720,6 +1972,9 @@ function startGame() {
   playerState.speed = BASE_SPEED;
   playerState.jumpVelocity = 0;
   playerState.grounded = true;
+  touchLeft = false;
+  touchRight = false;
+  touchJump = false;
   touchJumpQueued = false;
   tiltBaseline = null;
   steerSmooth = 0;
@@ -1765,12 +2020,18 @@ function startGame() {
   gameOverScreen.style.display = 'none';
   winScreen.style.display = 'none';
   hudEl.style.display = 'block';
+  setMobileControlsVisible(true);
+  if (isLikelyMobile && !mobileUseTilt) {
+    setMobileStatus('TOUCH CONTROLS ON • TAP USE TILT FOR GYRO', 2600);
+  }
+  updateMobileModeButton();
   state = GameState.PLAYING;
 }
 
 function endGame() {
   state = GameState.GAMEOVER;
   hudEl.style.display = 'none';
+  setMobileControlsVisible(false);
   finalDistance.textContent = Math.floor(distance);
   finalScore.textContent = Math.floor(score);
   gameOverScreen.style.display = 'flex';
@@ -1779,6 +2040,7 @@ function endGame() {
 function winGame() {
   state = GameState.WIN;
   hudEl.style.display = 'none';
+  setMobileControlsVisible(false);
   document.getElementById('win-distance').textContent = Math.floor(distance);
   document.getElementById('win-score').textContent = Math.floor(score);
   document.getElementById('win-lives').textContent = Math.max(0, lives);
@@ -1786,16 +2048,16 @@ function winGame() {
 }
 
 // ── Button Handlers ──────────────────────────────────────────
-document.getElementById('start-btn').addEventListener('click', () => {
-  void enableTiltControlsFromGesture();
+document.getElementById('start-btn').addEventListener('click', async () => {
+  await enableTiltControlsFromGesture();
   startGame();
 });
-document.getElementById('restart-btn').addEventListener('click', () => {
-  void enableTiltControlsFromGesture();
+document.getElementById('restart-btn').addEventListener('click', async () => {
+  await enableTiltControlsFromGesture();
   startGame();
 });
-document.getElementById('play-again-btn').addEventListener('click', () => {
-  void enableTiltControlsFromGesture();
+document.getElementById('play-again-btn').addEventListener('click', async () => {
+  await enableTiltControlsFromGesture();
   startGame();
 });
 
