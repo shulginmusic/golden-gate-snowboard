@@ -141,8 +141,8 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
 }
 #mobile-controls .mobile-row {
   display: grid;
-  grid-template-columns: 1fr 1.1fr 1fr;
-  gap: 10px;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
 }
 #mobile-controls button {
   pointer-events: auto;
@@ -162,6 +162,12 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
 #mobile-jump {
   height: 72px;
   font-size: 22px;
+}
+#mobile-flip {
+  height: 64px;
+  font-size: 18px;
+  border-color: rgba(255, 220, 100, 0.88);
+  color: #ffdd44;
 }
 #mobile-status {
   position: absolute;
@@ -240,9 +246,10 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
   <div class="controls-info">
     <p>&larr; &rarr; / A D &mdash; Steer</p>
     <p>SPACE &mdash; Jump</p>
-    <p>In air: hold &larr; &rarr; for SHIFTY / INDY</p>
-    <p>In air: SPACE again for 360 &mdash; combo for bigger tricks!</p>
-    <p>MOBILE: Hold LEFT / RIGHT, tap JUMP &mdash; or double-tap JUMP for 360</p>
+    <p>In air: hold &larr; &rarr; for SHIFTY / INDY &mdash; &uarr; / W for BACKFLIP</p>
+    <p>In air: SPACE again for 360 &mdash; combine for CORK / RODEO!</p>
+    <p>More tricks in one jump = higher multiplier!</p>
+    <p>MOBILE: JUMP + FLIP + LEFT / RIGHT &mdash; double JUMP for 360</p>
   </div>
   <button id="start-btn">DROP IN</button>
 </div>
@@ -264,6 +271,7 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
   <div class="mobile-row">
     <button id="mobile-left" type="button">LEFT</button>
     <button id="mobile-jump" type="button">JUMP</button>
+    <button id="mobile-flip" type="button">FLIP</button>
     <button id="mobile-right" type="button">RIGHT</button>
   </div>
 </div>

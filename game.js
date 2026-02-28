@@ -21,7 +21,7 @@ const PLAYER_HALF_H = 0.75;
 const PLAYER_HALF_D = 0.6;
 const TOTAL_GAME_LENGTH = 6400;
 const OBSTACLE_DENSITY = 0.72;
-const COLLECTIBLE_DENSITY = 1.5;
+const COLLECTIBLE_DENSITY = 0.75;
 const BASE_SPEED = 0.34;
 const MAX_SPEED = 1.35;
 const SLOPE_ACCEL = -0.025;
@@ -33,11 +33,74 @@ const ROUTE_TURNINESS = 0.55;
 const MAX_FORWARD_YAW = 0.62;
 const SHARP_CORNER_WIDTH = 72;
 const SHARP_CORNERS = [
-  { z: 980, dir: 1 },
-  { z: 1920, dir: -1 },
-  { z: 3060, dir: 1 },
-  { z: 4260, dir: -1 },
-  { z: 5380, dir: 1 },
+  // Block 1 — Twin Peaks opener (immediate from drop-in)
+  { z: 30,   dir:  1, width: 52 },
+  { z: 95,   dir: -1, width: 52 },
+  { z: 160,  dir:  1, width: 52 },
+  { z: 225,  dir: -1, width: 50 },
+  // Sweep into Lombard
+  { z: 370,  dir:  1, width: 88 },
+  // Block 2 — Lombard Street (iconic tight block)
+  { z: 560,  dir: -1, width: 44 },
+  { z: 630,  dir:  1, width: 44 },
+  { z: 700,  dir: -1, width: 44 },
+  { z: 770,  dir:  1, width: 44 },
+  { z: 840,  dir: -1, width: 44 },
+  // Block 3 — Castro
+  { z: 1010, dir:  1, width: 54 },
+  { z: 1075, dir: -1, width: 54 },
+  { z: 1140, dir:  1, width: 54 },
+  { z: 1205, dir: -1, width: 52 },
+  // Sweep
+  { z: 1420, dir:  1, width: 90 },
+  // Block 4 — late Castro
+  { z: 1630, dir: -1, width: 54 },
+  { z: 1695, dir:  1, width: 54 },
+  { z: 1760, dir: -1, width: 54 },
+  { z: 1825, dir:  1, width: 52 },
+  // Block 5 — Mission entry
+  { z: 2080, dir: -1, width: 54 },
+  { z: 2145, dir:  1, width: 54 },
+  { z: 2210, dir: -1, width: 54 },
+  { z: 2275, dir:  1, width: 52 },
+  // Sweep
+  { z: 2500, dir: -1, width: 88 },
+  // Block 6 — Mission switchbacks
+  { z: 2760, dir:  1, width: 50 },
+  { z: 2840, dir: -1, width: 50 },
+  { z: 2920, dir:  1, width: 50 },
+  // Block 7 — Haight entry
+  { z: 3100, dir: -1, width: 54 },
+  { z: 3165, dir:  1, width: 54 },
+  { z: 3230, dir: -1, width: 54 },
+  { z: 3295, dir:  1, width: 52 },
+  // Sweep
+  { z: 3520, dir: -1, width: 90 },
+  // Block 8 — Haight descent
+  { z: 3720, dir:  1, width: 54 },
+  { z: 3785, dir: -1, width: 54 },
+  { z: 3850, dir:  1, width: 54 },
+  { z: 3915, dir: -1, width: 52 },
+  // Sweep into Embarcadero
+  { z: 4180, dir:  1, width: 92 },
+  // Block 9 — Embarcadero
+  { z: 4520, dir: -1, width: 54 },
+  { z: 4585, dir:  1, width: 54 },
+  { z: 4650, dir: -1, width: 54 },
+  { z: 4715, dir:  1, width: 52 },
+  // Sweep
+  { z: 4960, dir: -1, width: 88 },
+  // Block 10 — late Embarcadero
+  { z: 5160, dir:  1, width: 54 },
+  { z: 5225, dir: -1, width: 54 },
+  { z: 5290, dir:  1, width: 54 },
+  // Block 11 — Bay
+  { z: 5560, dir: -1, width: 54 },
+  { z: 5625, dir:  1, width: 54 },
+  { z: 5690, dir: -1, width: 54 },
+  { z: 5755, dir:  1, width: 52 },
+  // Final sweep to ferry
+  { z: 5960, dir: -1, width: 88 },
 ];
 
 // ── Zone Definitions ─────────────────────────────────────────
@@ -46,67 +109,67 @@ const ZONES = [
     id: 'twin_peaks', name: 'TWIN PEAKS',
     zStart: 0, zEnd: 1280,
     streetWidth: 30, buildingInset: 16,
-    obstaclesPerChunk: [2, 3], collectiblesPerChunk: [3, 4],
+    obstaclesPerChunk: [2, 3], collectiblesPerChunk: [2, 3],
     slopeMultiplier: 0.08, hillAmplitude: 14, hillFreqX: 0.025, hillFreqZ: 0.018, flatness: 0.0,
     obstacleWeights: { car: 0.45, dogWalker: 0.25, limeScooter: 0.2, van: 0.1 },
     buildingType: 'victorian', victorianDensity: 0.95,
     fogColor: 0x87ceeb, fogDensity: 0.003, skyColor: 0x87ceeb,
-    hasRainbowCrosswalks: false, hasMurals: false,
+    hasRainbowCrosswalks: false, hasMurals: false, naturalSpaceChance: 0.25,
   },
   {
     id: 'castro', name: 'THE CASTRO',
     zStart: 1280, zEnd: 2400,
     streetWidth: 18, buildingInset: 10,
-    obstaclesPerChunk: [3, 5], collectiblesPerChunk: [2, 3],
-    slopeMultiplier: 0.11, hillAmplitude: 10, hillFreqX: 0.03, hillFreqZ: 0.025, flatness: 0.2,
+    obstaclesPerChunk: [3, 5], collectiblesPerChunk: [1, 2],
+    slopeMultiplier: 0.11, hillAmplitude: 10, hillFreqX: 0.03, hillFreqZ: 0.025, flatness: 0.05,
     obstacleWeights: { car: 0.35, dogWalker: 0.35, limeScooter: 0.2, van: 0.1 },
     buildingType: 'victorian', victorianDensity: 0.85,
     fogColor: 0x7ec8e3, fogDensity: 0.003, skyColor: 0x7ec8e3,
-    hasRainbowCrosswalks: true, hasMurals: false,
+    hasRainbowCrosswalks: true, hasMurals: false, naturalSpaceChance: 0.08,
   },
   {
     id: 'mission', name: 'THE MISSION',
     zStart: 2400, zEnd: 3520,
     streetWidth: 14, buildingInset: 8,
-    obstaclesPerChunk: [4, 7], collectiblesPerChunk: [2, 3],
-    slopeMultiplier: 0.12, hillAmplitude: 8, hillFreqX: 0.035, hillFreqZ: 0.03, flatness: 0.3,
+    obstaclesPerChunk: [4, 7], collectiblesPerChunk: [1, 2],
+    slopeMultiplier: 0.12, hillAmplitude: 8, hillFreqX: 0.035, hillFreqZ: 0.03, flatness: 0.08,
     obstacleWeights: { car: 0.32, dogWalker: 0.28, limeScooter: 0.24, van: 0.16 },
     buildingType: 'mural', victorianDensity: 0.8,
     fogColor: 0x80c4e0, fogDensity: 0.003, skyColor: 0x80c4e0,
-    hasRainbowCrosswalks: false, hasMurals: true,
+    hasRainbowCrosswalks: false, hasMurals: true, naturalSpaceChance: 0.10,
   },
   {
     id: 'haight', name: 'THE HAIGHT',
     zStart: 3520, zEnd: 4640,
     streetWidth: 14, buildingInset: 7,
-    obstaclesPerChunk: [5, 9], collectiblesPerChunk: [2, 2],
+    obstaclesPerChunk: [5, 9], collectiblesPerChunk: [1, 2],
     slopeMultiplier: 0.16, hillAmplitude: 14, hillFreqX: 0.04, hillFreqZ: 0.035, flatness: 0.1,
     obstacleWeights: { car: 0.28, dogWalker: 0.27, limeScooter: 0.25, van: 0.2 },
     buildingType: 'psychedelic', victorianDensity: 1.0,
     fogColor: 0x88b8d8, fogDensity: 0.003, skyColor: 0x88b8d8,
-    hasRainbowCrosswalks: false, hasMurals: false,
+    hasRainbowCrosswalks: false, hasMurals: false, naturalSpaceChance: 0.18,
   },
   {
     id: 'embarcadero', name: 'EMBARCADERO',
     zStart: 4640, zEnd: 5760,
     streetWidth: 22, buildingInset: 12,
     obstaclesPerChunk: [6, 10], collectiblesPerChunk: [1, 2],
-    slopeMultiplier: 0.03, hillAmplitude: 1, hillFreqX: 0.01, hillFreqZ: 0.01, flatness: 0.85,
+    slopeMultiplier: 0.07, hillAmplitude: 6, hillFreqX: 0.025, hillFreqZ: 0.022, flatness: 0.15,
     obstacleWeights: { car: 0.45, dogWalker: 0.25, limeScooter: 0.15, van: 0.15 },
     buildingType: 'pier', victorianDensity: 0,
     fogColor: 0x6eb5d9, fogDensity: 0.003, skyColor: 0x6eb5d9,
-    hasRainbowCrosswalks: false, hasMurals: false,
+    hasRainbowCrosswalks: false, hasMurals: false, naturalSpaceChance: 0.20,
   },
   {
     id: 'bay', name: 'THE BAY',
     zStart: 5760, zEnd: 6400,
     streetWidth: 12, buildingInset: 6,
-    obstaclesPerChunk: [2, 4], collectiblesPerChunk: [1, 2],
-    slopeMultiplier: 0.03, hillAmplitude: 0, hillFreqX: 0, hillFreqZ: 0, flatness: 1.0,
+    obstaclesPerChunk: [2, 4], collectiblesPerChunk: [1, 1],
+    slopeMultiplier: 0.05, hillAmplitude: 4, hillFreqX: 0.02, hillFreqZ: 0.018, flatness: 0.12,
     obstacleWeights: { car: 0.3, dogWalker: 0.45, limeScooter: 0.2, van: 0.05 },
     buildingType: 'pier', victorianDensity: 0,
     fogColor: 0x60a8d0, fogDensity: 0.003, skyColor: 0x60a8d0,
-    hasRainbowCrosswalks: false, hasMurals: false,
+    hasRainbowCrosswalks: false, hasMurals: false, naturalSpaceChance: 0.40,
   },
 ];
 
@@ -124,9 +187,10 @@ function getRouteTurnSignal(z) {
 function getSharpCornerSignal(z) {
   let signal = 0;
   for (const corner of SHARP_CORNERS) {
+    const w = corner.width ?? SHARP_CORNER_WIDTH;
     const dz = z - corner.z;
-    if (Math.abs(dz) > SHARP_CORNER_WIDTH) continue;
-    const phase = 1 - Math.abs(dz) / SHARP_CORNER_WIDTH;
+    if (Math.abs(dz) > w) continue;
+    const phase = 1 - Math.abs(dz) / w;
     signal += corner.dir * Math.sin(phase * Math.PI);
   }
   return THREE.MathUtils.clamp(signal, -1, 1);
@@ -134,18 +198,17 @@ function getSharpCornerSignal(z) {
 
 function getRouteCenterX(z, zone) {
   const halfStreet = zone.streetWidth / 2;
-  const rolling = getRouteTurnSignal(z) * halfStreet * 0.34;
-
   let cornerOffset = 0;
   for (const corner of SHARP_CORNERS) {
-    const start = corner.z - SHARP_CORNER_WIDTH * 0.48;
-    const end = corner.z + SHARP_CORNER_WIDTH * 0.48;
+    const w = corner.width ?? SHARP_CORNER_WIDTH;
+    const start = corner.z - w * 0.48;
+    const end = corner.z + w * 0.48;
     const step = smoothstep(start, end, z);
     cornerOffset += corner.dir * step * halfStreet * 0.82;
   }
 
   const clampedOffset = THREE.MathUtils.clamp(cornerOffset, -halfStreet * 0.84, halfStreet * 0.84);
-  return rolling + clampedOffset;
+  return clampedOffset;
 }
 
 function getZoneBlend(z) {
@@ -177,6 +240,11 @@ let waterPlane = null;
 let collectibleCombo = 0;
 let collectibleComboTimer = 0;
 let carveSprayTimer = 0;
+let trickStreak = 0;
+let trickStreakTimer = 0;
+let scoreMultiplier = 1;
+let scoreMultiplierTimer = 0;
+let landingImpactTimer = 0;
 
 // ── Utilities ────────────────────────────────────────────────
 function hash(x, y) {
@@ -834,6 +902,25 @@ function addMuralToBuilding(building, rng) {
   }
 }
 
+function createTree(rng) {
+  const g = new THREE.Group();
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e });
+  const leafMat  = new THREE.MeshStandardMaterial({ color: 0x2d6a2d });
+  const h = 3.5 + rng() * 2.5;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, h * 0.4, 7), trunkMat);
+  trunk.position.y = h * 0.2;
+  trunk.castShadow = true;
+  g.add(trunk);
+  for (let t = 0; t < 3; t++) {
+    const r = (1.8 - t * 0.4) + rng() * 0.4;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h * 0.38, 7), leafMat);
+    cone.position.y = h * 0.28 + t * h * 0.22;
+    cone.castShadow = true;
+    g.add(cone);
+  }
+  return g;
+}
+
 function createSnowflakeCollectible() {
   const geo = new THREE.IcosahedronGeometry(0.42, 1);
   const mat = new THREE.MeshStandardMaterial({
@@ -841,8 +928,41 @@ function createSnowflakeCollectible() {
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.userData.isCollectible = true;
+  mesh.userData.collectibleType = 'snowball';
+  mesh.userData.heightOffset = 1.3;
   mesh.userData.bbox = new THREE.Box3().setFromCenterAndSize(
     new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.9, 0.9, 0.9)
+  );
+  return mesh;
+}
+
+function createLifeCollectible() {
+  const geo = new THREE.IcosahedronGeometry(0.46, 1);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xff3366, emissive: 0xff0044, emissiveIntensity: 2.8, flatShading: false,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.userData.isCollectible = true;
+  mesh.userData.collectibleType = 'life';
+  mesh.userData.heightOffset = 1.5;
+  mesh.userData.bbox = new THREE.Box3().setFromCenterAndSize(
+    new THREE.Vector3(), new THREE.Vector3(1.0, 1.0, 1.0)
+  );
+  return mesh;
+}
+
+function createGoldenCollectible(multiplier) {
+  const geo = new THREE.IcosahedronGeometry(0.52, 1);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 3.2, flatShading: false,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.userData.isCollectible = true;
+  mesh.userData.collectibleType = 'golden';
+  mesh.userData.multiplier = multiplier;
+  mesh.userData.heightOffset = 1.5;
+  mesh.userData.bbox = new THREE.Box3().setFromCenterAndSize(
+    new THREE.Vector3(), new THREE.Vector3(1.1, 1.1, 1.1)
   );
   return mesh;
 }
@@ -907,13 +1027,37 @@ function populateChunk(chunk) {
     chunk.obstacles.push(obj);
   }
 
-  // ── Buildings on both sides ──
+  // ── Buildings / Trees / Gaps on both sides ──
+  const naturalChance = zone.naturalSpaceChance ?? 0.1;
   const buildingsPerSide = zone.buildingType === 'pier' ? 3 + Math.floor(rng() * 3) : 5 + Math.floor(rng() * 3);
   for (const side of [-1, 1]) {
     for (let i = 0; i < buildingsPerSide; i++) {
+      const z = zMin + (i / buildingsPerSide) * CHUNK_DEPTH + rng() * (CHUNK_DEPTH / buildingsPerSide) * 0.8;
+      const spaceRoll = rng();
+
+      // Open gap — nothing placed
+      if (spaceRoll < naturalChance * 0.5) {
+        rng(); // consume rng to keep seeding consistent
+        continue;
+      }
+
+      // Tree cluster
+      if (spaceRoll < naturalChance) {
+        const treeCount = 1 + Math.floor(rng() * 3);
+        for (let t = 0; t < treeCount; t++) {
+          const tree = createTree(rng);
+          const treeX = side * (halfStreet + 1.5 + rng() * 3.5);
+          const treeZ = z + (rng() - 0.5) * (CHUNK_DEPTH / buildingsPerSide) * 0.7;
+          tree.position.set(treeX, getHeight(treeX, treeZ), treeZ);
+          scene.add(tree);
+          chunk.buildings.push(tree);
+        }
+        continue;
+      }
+
+      // Building
       let building;
       const vRoll = rng();
-
       if (zone.buildingType === 'victorian' || (zone.victorianDensity > 0 && vRoll < zone.victorianDensity)) {
         building = createVictorianHouse(rng);
       } else if (zone.buildingType === 'psychedelic') {
@@ -932,7 +1076,6 @@ function populateChunk(chunk) {
       const narrowStreetRelief = THREE.MathUtils.clamp((16 - zone.streetWidth) * 0.18, 0, 1.3);
       const minOffset = Math.max(zone.buildingInset, halfStreet + sidewalkGap + footprintHalfWidth) + narrowStreetRelief;
       const x = side * (minOffset + rng() * 1.6);
-      const z = zMin + (i / buildingsPerSide) * CHUNK_DEPTH + rng() * (CHUNK_DEPTH / buildingsPerSide) * 0.8;
       building.position.set(x, getHeight(x, z), z);
       building.rotation.y = side > 0 ? Math.PI * 0.5 + rng() * 0.2 : -Math.PI * 0.5 + rng() * 0.2;
       scene.add(building);
@@ -961,11 +1104,33 @@ function populateChunk(chunk) {
   const spreadFactor = zone.streetWidth / 30;
   for (let i = 0; i < collectibleCount; i++) {
     const sf = createSnowflakeCollectible();
+    sf.userData.heightOffset = 0.7 + rng() * 3.2;
     const x = (rng() - 0.5) * zone.streetWidth * 0.7 * spreadFactor;
     const z = zMin + rng() * CHUNK_DEPTH;
-    sf.position.set(x, getHeight(x, z) + 1.2, z);
+    sf.position.set(x, getHeight(x, z) + sf.userData.heightOffset, z);
     scene.add(sf);
     chunk.collectibles.push(sf);
+  }
+
+  // ── Life collectible (rare, ~12% per chunk) ──
+  if (rng() < 0.12) {
+    const lc = createLifeCollectible();
+    const lx = (rng() - 0.5) * zone.streetWidth * 0.6;
+    const lz = zMin + rng() * CHUNK_DEPTH;
+    lc.position.set(lx, getHeight(lx, lz) + 1.5, lz);
+    scene.add(lc);
+    chunk.collectibles.push(lc);
+  }
+
+  // ── Golden snowball (very rare, ~7% per chunk) ──
+  const goldMult = rng() < 0.35 ? 3 : 2;
+  if (rng() < 0.07) {
+    const gc = createGoldenCollectible(goldMult);
+    const gx = (rng() - 0.5) * zone.streetWidth * 0.55;
+    const gz = zMin + rng() * CHUNK_DEPTH;
+    gc.position.set(gx, getHeight(gx, gz) + 1.5, gz);
+    scene.add(gc);
+    chunk.collectibles.push(gc);
   }
 
   // ── Finish boat (Bay zone) ──
@@ -1224,17 +1389,23 @@ const trickState = {
   hasLeft: false,
   hasRight: false,
   hasSpun: false,
+  hasFlipped: false,
   spinAngle: 0,
   spinRate: 0,
+  flipAngle: 0,
+  flipRate: 0,
+  flipAngleTarget: 0,
   wasGrounded: true,
 };
 
 // ── Input ────────────────────────────────────────────────────
-const keys = { left: false, right: false, jump: false };
+const keys = { left: false, right: false, jump: false, up: false };
 const isLikelyMobile = window.matchMedia('(pointer: coarse)').matches
   || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 let touchJumpQueued = false;
+let touchFlipQueued = false;
 let jumpJustPressed = false;
+let flipJustPressed = false;
 let steerSmooth = 0;
 let mobileStatusTimer = null;
 
@@ -1242,6 +1413,7 @@ const mobileControlsEl = document.getElementById('mobile-controls');
 const mobileLeftBtn = document.getElementById('mobile-left');
 const mobileRightBtn = document.getElementById('mobile-right');
 const mobileJumpBtn = document.getElementById('mobile-jump');
+const mobileFlipBtn = document.getElementById('mobile-flip');
 const mobileStatusEl = document.getElementById('mobile-status');
 
 function setMobileControlsVisible(visible) {
@@ -1269,12 +1441,14 @@ function setMobileStatus(text, timeoutMs = 2400) {
 window.addEventListener('keydown', (e) => {
   if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
   if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+  if (e.code === 'ArrowUp' || e.code === 'KeyW') { keys.up = true; flipJustPressed = true; e.preventDefault(); }
   if (e.code === 'Space') { keys.jump = true; jumpJustPressed = true; e.preventDefault(); }
   if (e.code === 'Enter' && state === GameState.MENU) startGame();
 });
 window.addEventListener('keyup', (e) => {
   if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
   if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+  if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = false;
   if (e.code === 'Space') keys.jump = false;
 });
 
@@ -1305,6 +1479,13 @@ if (isLikelyMobile) {
       if (state !== GameState.PLAYING) return;
       e.preventDefault();
       touchJumpQueued = true;
+    }, { passive: false });
+  }
+  if (mobileFlipBtn) {
+    mobileFlipBtn.addEventListener('pointerdown', (e) => {
+      if (state !== GameState.PLAYING) return;
+      e.preventDefault();
+      touchFlipQueued = true;
     }, { passive: false });
   }
 }
@@ -1345,6 +1526,7 @@ window.addEventListener('touchcancel', () => {
   touchRight = false;
   touchJump = false;
   touchJumpQueued = false;
+  touchFlipQueued = false;
 }, { passive: true });
 
 // ── Camera ───────────────────────────────────────────────────
@@ -1380,22 +1562,57 @@ function updatePlayer(dt) {
   const digitalSteer = (steerLeft ? 1 : 0) - (steerRight ? 1 : 0);
   const targetSteer = THREE.MathUtils.clamp(digitalSteer, -1, 1);
   steerSmooth = THREE.MathUtils.lerp(steerSmooth, targetSteer, Math.min(1, 8 * dt));
-  const steerRate = KEY_STEER_RATE;
+  // Steer rate scales up at low speeds so the player stays maneuverable
+  const speedNorm = THREE.MathUtils.clamp(
+    (playerState.speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED), 0, 1
+  );
+  const steerRate = KEY_STEER_RATE * (1.0 + (1.0 - speedNorm) * 0.8);
   const yawFraction = Math.abs(playerState.rotation) / MAX_FORWARD_YAW;
   // Resistance only when pressing TOWARD the limit — pressing away gets full power
   const towardLimit = steerSmooth !== 0 && Math.sign(steerSmooth) === Math.sign(playerState.rotation);
   const steerResistance = towardLimit
     ? 1 - THREE.MathUtils.clamp((yawFraction - 0.6) / 0.4, 0, 1) * 0.85
     : 1.0;
-  playerState.rotation += steerSmooth * steerRate * dt * steerResistance;
+  // Escape boost: when pressing hard away from a deep limit, amplify input and dampen corner pull
+  // Use steerSmooth (not raw buttons) so key-release momentum also triggers escape boost
+  const escapingLimit = !towardLimit && Math.abs(steerSmooth) > 0.05 && yawFraction > 0.72;
+  const escapeBoost = escapingLimit ? 3.5 : 1.0;
+  const cornerDamping = escapingLimit ? 0.15 : 1.0;
+  const playerDelta = steerSmooth * steerRate * dt * steerResistance * escapeBoost;
+  playerState.rotation += playerDelta;
   if (!steerLeft && !steerRight) {
     playerState.rotation = THREE.MathUtils.lerp(playerState.rotation, 0, dt * 1.8);
   }
-  const routeTurn = getRouteTurnSignal(pos.z);
   const cornerTurn = getSharpCornerSignal(pos.z);
-  playerState.rotation -= (routeTurn * ROUTE_TURNINESS + cornerTurn * 1.95) * dt;
+  // Sharp corners affect rotation on the ground; gentle bends handled by centering; no signals in air
+  const cornerDelta = playerState.grounded
+    ? -(cornerTurn * 1.1 * cornerDamping) * dt
+    : 0;
+  playerState.rotation += cornerDelta;
   playerState.rotation = wrapAngleRad(playerState.rotation);
   playerState.rotation = THREE.MathUtils.clamp(playerState.rotation, -MAX_FORWARD_YAW, MAX_FORWARD_YAW);
+
+  // // DEBUG — logs only when near yaw limit and pressing away; throttled to ~10/s
+  // if (yawFraction > 0.75 && (steerLeft || steerRight)) {
+  //   if (!updatePlayer._logThrottle || performance.now() - updatePlayer._logThrottle > 100) {
+  //     updatePlayer._logThrottle = performance.now();
+  //     console.log(JSON.stringify({
+  //       rot: playerState.rotation.toFixed(3),
+  //       yawFrac: yawFraction.toFixed(2),
+  //       steerSmooth: steerSmooth.toFixed(2),
+  //       towardLimit,
+  //       escapingLimit,
+  //       steerResistance: steerResistance.toFixed(2),
+  //       escapeBoost,
+  //       cornerDamping,
+  //       playerDelta: playerDelta.toFixed(4),
+  //       cornerDelta: cornerDelta.toFixed(4),
+  //       cornerTurn: cornerTurn.toFixed(3),
+  //       routeTurn: routeTurn.toFixed(3),
+  //       z: Math.floor(pos.z),
+  //     }));
+  //   }
+  // }
 
   // Slope-based acceleration
   const hHere = getHeight(pos.x, pos.z);
@@ -1424,6 +1641,16 @@ function updatePlayer(dt) {
     touchJumpQueued = false;
   }
   jumpJustPressed = false;
+
+  // Flip input while airborne — each press commits one additional full rotation (debounced)
+  const wantFlip = flipJustPressed || touchFlipQueued;
+  if (!playerState.grounded && wantFlip) {
+    trickState.flipAngleTarget += Math.PI * 2;
+    trickState.flipRate = Math.PI * 3.5;
+  }
+  flipJustPressed = false;
+  touchFlipQueued = false;
+
   if (!playerState.grounded) {
     playerState.jumpVelocity -= 22 * dt;
   }
@@ -1436,19 +1663,65 @@ function updatePlayer(dt) {
     trickState.hasLeft = false;
     trickState.hasRight = false;
     trickState.hasSpun = false;
+    trickState.hasFlipped = false;
     trickState.spinAngle = 0;
     trickState.spinRate = 0;
+    trickState.flipAngle = 0;
+    trickState.flipRate = 0;
+    trickState.flipAngleTarget = 0;
   } else if (!trickState.wasGrounded && nowGrounded) {
-    // Landing: evaluate and award trick
+    // Landing: check if a flip was started but not completed (bad landing)
+    const FLIP_TOLERANCE = 0.55;
+    const flipStarted = trickState.flipAngleTarget > 0;
+    const flipCompleted = !flipStarted ||
+      trickState.flipAngle >= trickState.flipAngleTarget - FLIP_TOLERANCE;
+    if (flipStarted && !flipCompleted) {
+      // Bail — lose a life, no trick score
+      showBonus('BAILED! -LIFE');
+      trickStreak = 0;
+      trickStreakTimer = 0;
+      trickState.hasFlipped = false;
+      trickState.flipAngle = 0;
+      trickState.flipRate = 0;
+      trickState.flipAngleTarget = 0;
+      trickState.spinAngle = 0;
+      trickState.spinRate = 0;
+      trickState.wasGrounded = nowGrounded;
+      onCollision();
+      return;
+    }
+    // Clean landing — hasFlipped is true if at least one full flip was committed
+    trickState.hasFlipped = trickState.flipAngleTarget >= Math.PI * 2;
+    // Wrap player.rotation.x to near-zero so it doesn't lerp backward through the full arc
+    if (trickState.flipAngle > 0) {
+      const completedRots = Math.round(trickState.flipAngle / (Math.PI * 2));
+      player.rotation.x -= completedRots * Math.PI * 2;
+    }
+    // Also wrap spin yaw so it doesn't unwind
+    if (trickState.spinAngle > 0) {
+      const completedSpins = Math.round(trickState.spinAngle / (Math.PI * 2));
+      player.rotation.y -= completedSpins * Math.PI * 2;
+    }
     evaluateTrick();
+    landingImpactTimer = Math.min(0.22, trickState.airTime * 0.4);
+    spawnLandingSnow(playerState.position.clone());
     trickState.spinAngle = 0;
     trickState.spinRate = 0;
+    trickState.flipAngle = 0;
+    trickState.flipRate = 0;
+    trickState.flipAngleTarget = 0;
   }
   if (!nowGrounded) {
     trickState.airTime += dt;
     if (steerLeft) trickState.hasLeft = true;
     if (steerRight) trickState.hasRight = true;
     trickState.spinAngle += trickState.spinRate * dt;
+    if (trickState.flipAngleTarget > 0) {
+      trickState.flipAngle = Math.min(
+        trickState.flipAngle + trickState.flipRate * dt,
+        trickState.flipAngleTarget
+      );
+    }
   }
   trickState.wasGrounded = nowGrounded;
 
@@ -1460,7 +1733,11 @@ function updatePlayer(dt) {
   pos.x += Math.sin(playerState.rotation) * moveSpeed;
   zone = getZoneForZ(pos.z);
   const routeCenter = getRouteCenterX(pos.z, zone);
-  pos.x += (routeCenter - pos.x) * dt * 0.75;
+  // X centering only on the ground — airborne player follows their own trajectory
+  if (playerState.grounded) {
+    const centeringStrength = THREE.MathUtils.lerp(0.28, 0.75, speedNorm);
+    pos.x += (routeCenter - pos.x) * dt * centeringStrength;
+  }
 
   // Ground follow
   const groundY = getHeight(pos.x, pos.z);
@@ -1512,7 +1789,17 @@ function updatePlayer(dt) {
 
   const normal = getTerrainNormal(pos.x, pos.z);
   const slopeAngleX = Math.atan2(normal.z, normal.y);
-  player.rotation.x = THREE.MathUtils.lerp(player.rotation.x, -slopeAngleX * 0.5, 3 * dt);
+  const targetPitch = nowGrounded ? -slopeAngleX * 0.5 : -slopeAngleX * 0.5 + trickState.flipAngle;
+  player.rotation.x = THREE.MathUtils.lerp(player.rotation.x, targetPitch, nowGrounded ? 3 * dt : 12 * dt);
+
+  // Landing squash — brief squish-and-spring on impact
+  if (landingImpactTimer > 0) {
+    landingImpactTimer -= dt;
+    const t = Math.max(0, landingImpactTimer / 0.22); // 1 → 0
+    player.scale.set(1 + 0.28 * t, Math.max(0.55, 1 - 0.45 * t), 1 + 0.28 * t);
+  } else {
+    player.scale.set(1, 1, 1);
+  }
 
   dirLight.position.set(pos.x - 50, pos.y + 100, pos.z - 50);
   dirLight.target.position.copy(pos);
@@ -1703,6 +1990,32 @@ function spawnCarveSpray(worldPos, steerAmount) {
   carveSprays.push({ points, velocities, life: 0.3, duration: 0.3 });
 }
 
+function spawnLandingSnow(pos) {
+  const count = 32;
+  const positions = new Float32Array(count * 3);
+  const velocities = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+    const r = 1.5 + Math.random() * 4.0;
+    positions[i * 3]     = pos.x + (Math.random() - 0.5) * 0.4;
+    positions[i * 3 + 1] = pos.y + 0.08;
+    positions[i * 3 + 2] = pos.z + (Math.random() - 0.5) * 0.4;
+    velocities[i * 3]     = Math.cos(a) * r;
+    velocities[i * 3 + 1] = 0.8 + Math.random() * 2.5;
+    velocities[i * 3 + 2] = Math.sin(a) * r;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.2, sizeAttenuation: false,
+    transparent: true, opacity: 0.92, depthWrite: false, fog: false,
+  });
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  scene.add(points);
+  carveSprays.push({ points, velocities, life: 0.55, duration: 0.55 });
+}
+
 function updateCarveSprays(dt) {
   for (let i = carveSprays.length - 1; i >= 0; i--) {
     const spray = carveSprays[i];
@@ -1776,14 +2089,32 @@ function checkCollisions() {
         scene.remove(sf);
         chunk.collectibles.splice(i, 1);
 
-        collectibleCombo = collectibleComboTimer > 0 ? collectibleCombo + 1 : 1;
-        collectibleComboTimer = 2.2;
-        const comboMult = 1 + Math.min(5, collectibleCombo - 1) * 0.25;
-        const reward = Math.round(COLLECTIBLE_BASE_SCORE * comboMult);
-        score += reward;
-        playerState.speed = Math.min(MAX_SPEED, playerState.speed + 0.045);
-        showBonus(`SNOW x${collectibleCombo} +${reward}`);
-        spawnCollectBurst(pickPos);
+        const cType = sf.userData.collectibleType;
+        if (cType === 'life') {
+          if (lives < MAX_LIVES) {
+            lives++;
+            updateLivesDisplay();
+            showBonus(`EXTRA LIFE! ${SNOWFLAKE_CHAR}`);
+          } else {
+            score += 1000;
+            showBonus('FULL LIVES! +1000');
+          }
+          spawnCollectBurst(pickPos);
+        } else if (cType === 'golden') {
+          scoreMultiplier = sf.userData.multiplier;
+          scoreMultiplierTimer = 8.0;
+          showBonus(`${scoreMultiplier}x SCORE! GO!`);
+          spawnCollectBurst(pickPos);
+        } else {
+          collectibleCombo = collectibleComboTimer > 0 ? collectibleCombo + 1 : 1;
+          collectibleComboTimer = 2.2;
+          const comboMult = 1 + Math.min(5, collectibleCombo - 1) * 0.25;
+          const reward = Math.round(COLLECTIBLE_BASE_SCORE * comboMult * scoreMultiplier);
+          score += reward;
+          playerState.speed = Math.min(MAX_SPEED, playerState.speed + 0.045);
+          showBonus(`SNOW x${collectibleCombo} +${reward}`);
+          spawnCollectBurst(pickPos);
+        }
       }
     }
   }
@@ -1793,6 +2124,8 @@ function onCollision() {
   lives--;
   invincibleTimer = 1.5;
   playerState.speed *= 0.4;
+  trickStreak = 0;
+  trickStreakTimer = 0;
   updateLivesDisplay();
   renderer.domElement.style.boxShadow = 'inset 0 0 80px rgba(255,50,50,0.7)';
   setTimeout(() => { renderer.domElement.style.boxShadow = 'none'; }, 200);
@@ -1805,20 +2138,41 @@ const trickBurstColors = [0xff4488, 0xffdd44, 0x44ffaa, 0x44aaff, 0xff8844, 0xaa
 
 function evaluateTrick() {
   if (trickState.airTime < 0.15) return;
-  const { hasLeft, hasRight, hasSpun } = trickState;
-  let name = null, pts = 0, level = 0;
-  if (hasSpun && hasLeft && hasRight) { name = 'MCTWIST!'; pts = 600; level = 3; }
-  else if (hasSpun && hasLeft)        { name = 'NOSE GRAB 360!'; pts = 400; level = 2; }
-  else if (hasSpun && hasRight)       { name = 'TAIL GRAB 360!'; pts = 400; level = 2; }
-  else if (hasSpun)                   { name = '360!'; pts = 300; level = 2; }
-  else if (hasLeft && hasRight)       { name = 'SHIFTY!'; pts = 250; level = 1; }
-  else if (hasLeft)                   { name = 'SHIFTY!'; pts = 200; level = 1; }
-  else if (hasRight)                  { name = 'INDY!'; pts = 200; level = 1; }
-  if (name) {
-    score += pts;
-    showBonus(name + ' +' + pts);
-    spawnTrickLandingBurst(playerState.position.clone(), level);
-  }
+  const { hasLeft, hasRight, hasSpun, hasFlipped } = trickState;
+  let name = null, basePts = 0, level = 0;
+
+  // Determine trick name + base points from inputs
+  if (hasFlipped && hasSpun && hasLeft && hasRight) { name = 'RODEO!';          basePts = 800; level = 3; }
+  else if (hasFlipped && hasSpun && (hasLeft || hasRight)) { name = 'CORK!';    basePts = 600; level = 3; }
+  else if (hasFlipped && hasSpun)                   { name = 'CORK!';           basePts = 500; level = 2; }
+  else if (hasFlipped && hasLeft && hasRight)        { name = 'RODEO GRAB!';    basePts = 450; level = 2; }
+  else if (hasFlipped && (hasLeft || hasRight))      { name = 'BACKFLIP GRAB!'; basePts = 350; level = 2; }
+  else if (hasFlipped)                               { name = 'BACKFLIP!';      basePts = 250; level = 1; }
+  else if (hasSpun && hasLeft && hasRight)            { name = 'MCTWIST!';      basePts = 600; level = 3; }
+  else if (hasSpun && hasLeft)                        { name = 'NOSE GRAB 360!';basePts = 400; level = 2; }
+  else if (hasSpun && hasRight)                       { name = 'TAIL GRAB 360!';basePts = 400; level = 2; }
+  else if (hasSpun)                                   { name = '360!';          basePts = 300; level = 2; }
+  else if (hasLeft && hasRight)                       { name = 'SHIFTY!';       basePts = 250; level = 1; }
+  else if (hasLeft)                                   { name = 'SHIFTY!';       basePts = 200; level = 1; }
+  else if (hasRight)                                  { name = 'INDY!';         basePts = 200; level = 1; }
+
+  if (!name) return;
+
+  // Component multiplier (more trick components in one jump = bigger reward)
+  const componentCount = [hasFlipped, hasSpun, hasLeft, hasRight].filter(Boolean).length;
+  const comboMult = [1, 1, 1.4, 2.0, 3.0][componentCount];
+
+  // Streak multiplier (consecutive trick landings)
+  trickStreak++;
+  trickStreakTimer = 5.0;
+  const streakMult = 1 + Math.min(trickStreak - 1, 4) * 0.15;
+
+  const finalPts = Math.round(basePts * comboMult * streakMult * scoreMultiplier);
+  score += finalPts;
+
+  const streakSuffix = trickStreak > 1 ? ` \uD83D\uDD25${trickStreak}` : '';
+  showBonus(`${name} +${finalPts}${streakSuffix}`);
+  spawnTrickLandingBurst(playerState.position.clone(), level);
 }
 
 function spawnTrickLandingBurst(worldPos, level) {
@@ -1869,7 +2223,7 @@ let targetFogDensity = ZONES[0].fogDensity;
 
 function updateScore(dt) {
   distance += playerState.speed * 60 * dt * 3.28;
-  score += playerState.speed * dt * 10;
+  score += playerState.speed * dt * 10 * scoreMultiplier;
   hudScore.textContent = Math.floor(score);
   hudDistance.textContent = Math.floor(distance) + ' ft';
   hudSpeed.textContent = 'SPEED: ' + Math.floor(playerState.speed * 100);
@@ -1916,7 +2270,13 @@ function updateZoneHUD(dt) {
     targetFogDensity = zone.fogDensity;
   }
 
-  hudZone.textContent = zone.name;
+  if (scoreMultiplierTimer > 0) {
+    hudZone.textContent = `${scoreMultiplier}x SCORE! ${Math.ceil(scoreMultiplierTimer)}s`;
+    hudZone.style.color = '#ffd700';
+  } else {
+    hudZone.textContent = zone.name;
+    hudZone.style.color = '';
+  }
 
   // Banner fade
   if (zoneBannerTimer > 0) {
@@ -1938,7 +2298,8 @@ function updateCollectibles(dt, time) {
     for (const sf of chunk.collectibles) {
       sf.rotation.y += 3.2 * dt;
       sf.rotation.x += 1.2 * dt;
-      sf.position.y = getHeight(sf.position.x, sf.position.z) + 1.3 + Math.sin(time * 4 + sf.position.x) * 0.45;
+      const hOff = sf.userData.heightOffset ?? 1.3;
+      sf.position.y = getHeight(sf.position.x, sf.position.z) + hOff + Math.sin(time * 4 + sf.position.x) * 0.45;
     }
   }
 }
@@ -1976,6 +2337,7 @@ function startGame() {
   touchJump = false;
   touchJumpQueued = false;
   jumpJustPressed = false;
+  flipJustPressed = false;
   steerSmooth = 0;
   collectibleCombo = 0;
   collectibleComboTimer = 0;
@@ -1984,9 +2346,19 @@ function startGame() {
   trickState.hasLeft = false;
   trickState.hasRight = false;
   trickState.hasSpun = false;
+  trickState.hasFlipped = false;
   trickState.spinAngle = 0;
   trickState.spinRate = 0;
+  trickState.flipAngle = 0;
+  trickState.flipRate = 0;
+  trickState.flipAngleTarget = 0;
   trickState.wasGrounded = true;
+  trickStreak = 0;
+  trickStreakTimer = 0;
+  scoreMultiplier = 1;
+  scoreMultiplierTimer = 0;
+  landingImpactTimer = 0;
+  touchFlipQueued = false;
   for (const burst of collectBursts) {
     scene.remove(burst.points);
     burst.points.geometry.dispose();
@@ -2119,6 +2491,16 @@ function gameLoop() {
     if (collectibleComboTimer > 0) {
       collectibleComboTimer -= dt;
       if (collectibleComboTimer <= 0) collectibleCombo = 0;
+    }
+
+    if (scoreMultiplierTimer > 0) {
+      scoreMultiplierTimer -= dt;
+      if (scoreMultiplierTimer <= 0) scoreMultiplier = 1;
+    }
+
+    if (trickStreakTimer > 0) {
+      trickStreakTimer -= dt;
+      if (trickStreakTimer <= 0) trickStreak = 0;
     }
 
     if (invincibleTimer > 0) {
