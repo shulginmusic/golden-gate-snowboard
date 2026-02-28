@@ -139,10 +139,15 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
   pointer-events: none;
 }
-#mobile-controls .mobile-row {
+#mobile-controls .mobile-row-main {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+#mobile-controls .mobile-row-flip {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 8px;
 }
 #mobile-controls button {
   pointer-events: auto;
@@ -164,15 +169,18 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
   font-size: 22px;
 }
 #mobile-flip {
-  height: 64px;
-  font-size: 18px;
+  height: 46px;
+  min-width: 86px;
+  max-width: 110px;
+  font-size: 15px;
+  padding: 0 14px;
   border-color: rgba(255, 220, 100, 0.88);
   color: #ffdd44;
 }
 #mobile-status {
   position: absolute;
   left: 12px;
-  bottom: calc(102px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(158px + env(safe-area-inset-bottom, 0px));
   background: rgba(17, 8, 5, 0.6);
   border: 1px solid rgba(255, 238, 221, 0.5);
   border-radius: 10px;
@@ -268,10 +276,12 @@ html, body, canvas { touch-action: none; overscroll-behavior: none; }
 <!-- Mobile Controls -->
 <div id="mobile-controls" aria-hidden="true">
   <div id="mobile-status">TOUCH CONTROLS</div>
-  <div class="mobile-row">
+  <div class="mobile-row-flip">
+    <button id="mobile-flip" type="button">FLIP</button>
+  </div>
+  <div class="mobile-row-main">
     <button id="mobile-left" type="button">LEFT</button>
     <button id="mobile-jump" type="button">JUMP</button>
-    <button id="mobile-flip" type="button">FLIP</button>
     <button id="mobile-right" type="button">RIGHT</button>
   </div>
 </div>
