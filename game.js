@@ -1492,8 +1492,8 @@ if (isLikelyMobile) {
 
 window.addEventListener('touchstart', (e) => {
   if (state === GameState.GAMEOVER || state === GameState.WIN) return;
-  if (isLikelyMobile) e.preventDefault();
   if (state === GameState.MENU) return;
+  if (isLikelyMobile) e.preventDefault();
 
   if (isLikelyMobile) return;
 
@@ -1506,6 +1506,7 @@ window.addEventListener('touchstart', (e) => {
 }, { passive: false });
 window.addEventListener('touchend', (e) => {
   if (state === GameState.GAMEOVER || state === GameState.WIN) return;
+  if (state === GameState.MENU) return;
   if (isLikelyMobile) {
     e.preventDefault();
     return;
@@ -2424,11 +2425,6 @@ startBtn.addEventListener('click', () => {
   if (state !== GameState.MENU) return;
   startGame();
 });
-startBtn.addEventListener('pointerdown', (e) => {
-  if (state !== GameState.MENU) return;
-  if (e.pointerType === 'touch') e.preventDefault();
-  startGame();
-}, { passive: false });
 document.getElementById('restart-btn').addEventListener('click', () => {
   startGame();
 });
