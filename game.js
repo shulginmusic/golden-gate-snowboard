@@ -20,7 +20,7 @@ const PLAYER_HALF_W = 0.4;
 const PLAYER_HALF_H = 0.75;
 const PLAYER_HALF_D = 0.6;
 const TOTAL_GAME_LENGTH = 6400;
-const OBSTACLE_DENSITY = 0.72;
+const OBSTACLE_DENSITY = 0.56;
 const COLLECTIBLE_DENSITY = 0.75;
 const BASE_SPEED = 0.34;
 const MAX_SPEED = 1.35;
@@ -32,6 +32,13 @@ const COLLECTIBLE_BASE_SCORE = 250;
 const ROUTE_TURNINESS = 0.55;
 const MAX_FORWARD_YAW = 0.62;
 const SHARP_CORNER_WIDTH = 72;
+const LOMBARD_Z_START = 520;
+const LOMBARD_Z_END = 900;
+const LOMBARD_SWITCHBACKS = 3.5;
+const SPLIT_PATH_SEGMENTS = [
+  { zStart: 1320, zEnd: 1700, offsetFactor: 0.34, laneFactor: 0.18 },
+  { zStart: 4520, zEnd: 4900, offsetFactor: 0.32, laneFactor: 0.17 },
+];
 const SHARP_CORNERS = [
   // Block 1 — Twin Peaks opener (immediate from drop-in)
   { z: 30,   dir:  1, width: 52 },
@@ -196,18 +203,41 @@ function getSharpCornerSignal(z) {
   return THREE.MathUtils.clamp(signal, -1, 1);
 }
 
+function getSplitPathInfo(z, halfStreet) {
+  for (const seg of SPLIT_PATH_SEGMENTS) {
+    if (z < seg.zStart || z > seg.zEnd) continue;
+    const enter = smoothstep(seg.zStart, seg.zStart + 70, z);
+    const exit = 1 - smoothstep(seg.zEnd - 70, seg.zEnd, z);
+    const blend = THREE.MathUtils.clamp(enter * exit, 0, 1);
+    if (blend <= 0) return null;
+    const branchOffset = THREE.MathUtils.clamp(halfStreet * seg.offsetFactor, 3.0, halfStreet * 0.78);
+    const laneHalfWidth = THREE.MathUtils.clamp(halfStreet * seg.laneFactor, 1.9, halfStreet * 0.42);
+    return { segment: seg, blend, branchOffset, laneHalfWidth };
+  }
+  return null;
+}
+
 function getRouteCenterX(z, zone) {
   const halfStreet = zone.streetWidth / 2;
+  const broadOffset = getRouteTurnSignal(z) * halfStreet * 0.26 * ROUTE_TURNINESS;
   let cornerOffset = 0;
   for (const corner of SHARP_CORNERS) {
     const w = corner.width ?? SHARP_CORNER_WIDTH;
-    const start = corner.z - w * 0.48;
-    const end = corner.z + w * 0.48;
-    const step = smoothstep(start, end, z);
-    cornerOffset += corner.dir * step * halfStreet * 0.82;
+    const dz = (z - corner.z) / w;
+    if (Math.abs(dz) >= 1) continue;
+    const envelope = Math.cos(Math.abs(dz) * Math.PI * 0.5);
+    cornerOffset += corner.dir * envelope * envelope * halfStreet * 0.52;
   }
 
-  const clampedOffset = THREE.MathUtils.clamp(cornerOffset, -halfStreet * 0.84, halfStreet * 0.84);
+  let lombardOffset = 0;
+  if (z >= LOMBARD_Z_START && z <= LOMBARD_Z_END) {
+    const t = (z - LOMBARD_Z_START) / (LOMBARD_Z_END - LOMBARD_Z_START);
+    const envelope = Math.sin(t * Math.PI);
+    lombardOffset = Math.sin(t * Math.PI * 2 * LOMBARD_SWITCHBACKS) * halfStreet * 0.68 * envelope;
+  }
+
+  const routeOffset = broadOffset + cornerOffset + lombardOffset;
+  const clampedOffset = THREE.MathUtils.clamp(routeOffset, -halfStreet * 0.86, halfStreet * 0.86);
   return clampedOffset;
 }
 
@@ -245,6 +275,7 @@ let trickStreakTimer = 0;
 let scoreMultiplier = 1;
 let scoreMultiplierTimer = 0;
 let landingImpactTimer = 0;
+let splitLaneChoice = 0;
 
 // ── Utilities ────────────────────────────────────────────────
 function hash(x, y) {
@@ -304,6 +335,10 @@ function getHeight(x, z) {
   const hillAmp = lerp(zc.hillAmplitude, zn.hillAmplitude, t);
   const freqX = lerp(zc.hillFreqX, zn.hillFreqX, t);
   const flat = lerp(zc.flatness, zn.flatness, t);
+  const halfStreet = lerp(zc.streetWidth, zn.streetWidth, t) * 0.5;
+  const routeCenter = lerp(getRouteCenterX(z, zc), getRouteCenterX(z, zn), t);
+  const localX = x - routeCenter;
+  const splitInfo = getSplitPathInfo(z, halfStreet);
 
   // Base downhill grade.
   const baseSlope = -z * slopeMult;
@@ -323,12 +358,29 @@ function getHeight(x, z) {
 
   // Side camber and cross-slope texture vary with x only, never creating uphill ramps.
   const camberStrength = (0.032 + hillAmp * 0.0014) * (1 - flat * 0.65);
-  const routeCamber = x * camberStrength;
+  const routeCamber = localX * camberStrength;
 
-  let hills = hillAmp * 0.22 * Math.sin(x * freqX + 0.9) * (1 - flat * 0.72);
-  hills += hillAmp * 0.1 * Math.sin(x * (freqX * 2.1) - 1.2) * (1 - flat * 0.78);
+  let hills = hillAmp * 0.22 * Math.sin(localX * freqX + 0.9) * (1 - flat * 0.72);
+  hills += hillAmp * 0.1 * Math.sin(localX * (freqX * 2.1) - 1.2) * (1 - flat * 0.78);
 
-  const noise = (noise2D(x * 0.3, 11.17) - 0.5) * 0.22 * (1 - flat * 0.8);
+  const noise = (noise2D(localX * 0.3, 11.17) - 0.5) * 0.22 * (1 - flat * 0.8);
+  const laneRatio = Math.abs(localX) / Math.max(halfStreet, 1);
+  const singleLaneCarve = -0.45 * (1 - smoothstep(0.15, 0.95, laneRatio));
+  const singleShoulderRise = smoothstep(0.9, 1.6, laneRatio) * (0.9 + hillAmp * 0.03) * (1 - flat * 0.35);
+  let laneProfile = singleLaneCarve + singleShoulderRise;
+  if (splitInfo && splitInfo.blend > 0) {
+    const leftRatio = Math.abs(localX + splitInfo.branchOffset) / Math.max(splitInfo.laneHalfWidth, 1);
+    const rightRatio = Math.abs(localX - splitInfo.branchOffset) / Math.max(splitInfo.laneHalfWidth, 1);
+    const dualLaneRatio = Math.min(leftRatio, rightRatio);
+    const dualLaneCarve = -1.05 * (1 - smoothstep(0.08, 1.0, dualLaneRatio));
+    const medianHalf = Math.max(1.0, splitInfo.branchOffset - splitInfo.laneHalfWidth * 0.58);
+    const medianRatio = Math.abs(localX) / medianHalf;
+    const medianRise = 1.15 * (1 - smoothstep(0.0, 1.0, medianRatio));
+    const outerRatio = Math.abs(localX) / Math.max(splitInfo.branchOffset + splitInfo.laneHalfWidth * 0.95, 1);
+    const outerRise = smoothstep(1.02, 1.7, outerRatio) * 0.9;
+    const splitProfile = dualLaneCarve + medianRise + outerRise;
+    laneProfile = lerp(laneProfile, splitProfile, splitInfo.blend);
+  }
 
   // Bay zone: gentle dip to water level
   let waterDip = 0;
@@ -337,7 +389,7 @@ function getHeight(x, z) {
     waterDip = -2 * bayT;
   }
 
-  return baseSlope + downhillDrops + routeCamber + hills + noise + waterDip;
+  return baseSlope + downhillDrops + routeCamber + hills + noise + laneProfile + waterDip;
 }
 
 function getTerrainNormal(x, z) {
@@ -1001,13 +1053,20 @@ function populateChunk(chunk) {
     const z = zMin + rng() * CHUNK_DEPTH;
     const cornerIntensity = Math.abs(getSharpCornerSignal(z));
     const routeCenter = getRouteCenterX(z, zone);
+    const splitInfo = getSplitPathInfo(z, halfStreet);
     const centerBuffer = 1.0 + cornerIntensity * 2.0;
     let x = routeCenter;
-    for (let tries = 0; tries < 6; tries++) {
-      const candidate = (rng() - 0.5) * roadHalf * 2;
-      if (Math.abs(candidate - routeCenter) >= centerBuffer || tries === 5) {
-        x = candidate;
-        break;
+    if (splitInfo && splitInfo.blend > 0.08 && rng() < 0.86) {
+      const laneSign = rng() < 0.5 ? -1 : 1;
+      const laneCenter = routeCenter + laneSign * splitInfo.branchOffset;
+      x = laneCenter + (rng() - 0.5) * splitInfo.laneHalfWidth * 1.65;
+    } else {
+      for (let tries = 0; tries < 6; tries++) {
+        const candidate = routeCenter + (rng() - 0.5) * roadHalf * 2;
+        if (Math.abs(candidate - routeCenter) >= centerBuffer || tries === 5) {
+          x = candidate;
+          break;
+        }
       }
     }
     obj.position.set(x, getHeight(x, z), z);
@@ -1046,8 +1105,9 @@ function populateChunk(chunk) {
         const treeCount = 1 + Math.floor(rng() * 3);
         for (let t = 0; t < treeCount; t++) {
           const tree = createTree(rng);
-          const treeX = side * (halfStreet + 1.5 + rng() * 3.5);
           const treeZ = z + (rng() - 0.5) * (CHUNK_DEPTH / buildingsPerSide) * 0.7;
+          const treeCenter = getRouteCenterX(treeZ, zone);
+          const treeX = treeCenter + side * (halfStreet + 1.5 + rng() * 3.5);
           tree.position.set(treeX, getHeight(treeX, treeZ), treeZ);
           scene.add(tree);
           chunk.buildings.push(tree);
@@ -1075,7 +1135,8 @@ function populateChunk(chunk) {
       const sidewalkGap = zone.buildingType === 'pier' ? 2.4 : 1.8;
       const narrowStreetRelief = THREE.MathUtils.clamp((16 - zone.streetWidth) * 0.18, 0, 1.3);
       const minOffset = Math.max(zone.buildingInset, halfStreet + sidewalkGap + footprintHalfWidth) + narrowStreetRelief;
-      const x = side * (minOffset + rng() * 1.6);
+      const routeCenter = getRouteCenterX(z, zone);
+      const x = routeCenter + side * (minOffset + rng() * 1.6);
       building.position.set(x, getHeight(x, z), z);
       building.rotation.y = side > 0 ? Math.PI * 0.5 + rng() * 0.2 : -Math.PI * 0.5 + rng() * 0.2;
       scene.add(building);
@@ -1092,7 +1153,8 @@ function populateChunk(chunk) {
   if (zone.hasRainbowCrosswalks && rng() > 0.4) {
     const cw = createRainbowCrosswalk();
     const z = zMin + rng() * CHUNK_DEPTH;
-    cw.position.set(0, getHeight(0, z) + 0.05, z);
+    const routeCenter = getRouteCenterX(z, zone);
+    cw.position.set(routeCenter, getHeight(routeCenter, z) + 0.05, z);
     scene.add(cw);
     chunk.buildings.push(cw);
   }
@@ -1105,8 +1167,14 @@ function populateChunk(chunk) {
   for (let i = 0; i < collectibleCount; i++) {
     const sf = createSnowflakeCollectible();
     sf.userData.heightOffset = 0.7 + rng() * 3.2;
-    const x = (rng() - 0.5) * zone.streetWidth * 0.7 * spreadFactor;
     const z = zMin + rng() * CHUNK_DEPTH;
+    const routeCenter = getRouteCenterX(z, zone);
+    const splitInfo = getSplitPathInfo(z, halfStreet);
+    let x = routeCenter + (rng() - 0.5) * zone.streetWidth * 0.7 * spreadFactor;
+    if (splitInfo && splitInfo.blend > 0.08 && rng() < 0.85) {
+      const laneSign = rng() < 0.5 ? -1 : 1;
+      x = routeCenter + laneSign * splitInfo.branchOffset + (rng() - 0.5) * splitInfo.laneHalfWidth * 1.5;
+    }
     sf.position.set(x, getHeight(x, z) + sf.userData.heightOffset, z);
     scene.add(sf);
     chunk.collectibles.push(sf);
@@ -1115,8 +1183,14 @@ function populateChunk(chunk) {
   // ── Life collectible (rare, ~12% per chunk) ──
   if (rng() < 0.12) {
     const lc = createLifeCollectible();
-    const lx = (rng() - 0.5) * zone.streetWidth * 0.6;
     const lz = zMin + rng() * CHUNK_DEPTH;
+    const routeCenter = getRouteCenterX(lz, zone);
+    const splitInfo = getSplitPathInfo(lz, halfStreet);
+    let lx = routeCenter + (rng() - 0.5) * zone.streetWidth * 0.6;
+    if (splitInfo && splitInfo.blend > 0.08) {
+      const laneSign = rng() < 0.5 ? -1 : 1;
+      lx = routeCenter + laneSign * splitInfo.branchOffset + (rng() - 0.5) * splitInfo.laneHalfWidth * 1.2;
+    }
     lc.position.set(lx, getHeight(lx, lz) + 1.5, lz);
     scene.add(lc);
     chunk.collectibles.push(lc);
@@ -1126,8 +1200,14 @@ function populateChunk(chunk) {
   const goldMult = rng() < 0.35 ? 3 : 2;
   if (rng() < 0.07) {
     const gc = createGoldenCollectible(goldMult);
-    const gx = (rng() - 0.5) * zone.streetWidth * 0.55;
     const gz = zMin + rng() * CHUNK_DEPTH;
+    const routeCenter = getRouteCenterX(gz, zone);
+    const splitInfo = getSplitPathInfo(gz, halfStreet);
+    let gx = routeCenter + (rng() - 0.5) * zone.streetWidth * 0.55;
+    if (splitInfo && splitInfo.blend > 0.08) {
+      const laneSign = rng() < 0.5 ? -1 : 1;
+      gx = routeCenter + laneSign * splitInfo.branchOffset + (rng() - 0.5) * splitInfo.laneHalfWidth * 1.1;
+    }
     gc.position.set(gx, getHeight(gx, gz) + 1.5, gz);
     scene.add(gc);
     chunk.collectibles.push(gc);
@@ -1137,7 +1217,8 @@ function populateChunk(chunk) {
   if (zone.id === 'bay' && zMin <= TOTAL_GAME_LENGTH && zMin + CHUNK_DEPTH >= TOTAL_GAME_LENGTH) {
     const boat = createFerryBoat();
     const boatZ = TOTAL_GAME_LENGTH;
-    boat.position.set(0, getHeight(0, boatZ) + 1.5, boatZ);
+    const routeCenter = getRouteCenterX(boatZ, zone);
+    boat.position.set(routeCenter, getHeight(routeCenter, boatZ) + 1.5, boatZ);
     boat.userData.isFinish = true;
     scene.add(boat);
     chunk.obstacles.push(boat);
@@ -1577,13 +1658,15 @@ function updatePlayer(dt) {
   const cornerDamping = escapingLimit ? 0.15 : 1.0;
   const playerDelta = steerSmooth * steerRate * dt * steerResistance * escapeBoost;
   playerState.rotation += playerDelta;
-  if (!steerLeft && !steerRight) {
-    playerState.rotation = THREE.MathUtils.lerp(playerState.rotation, 0, dt * 1.8);
+  const hasSteerInput = steerLeft || steerRight;
+  if (!hasSteerInput) {
+    playerState.rotation = THREE.MathUtils.lerp(playerState.rotation, 0, dt * 2.9);
   }
   const cornerTurn = getSharpCornerSignal(pos.z);
   // Sharp corners affect rotation on the ground; gentle bends handled by centering; no signals in air
+  const passiveCornerScale = hasSteerInput ? 1.0 : 0.2;
   const cornerDelta = playerState.grounded
-    ? -(cornerTurn * 1.1 * cornerDamping) * dt
+    ? -(cornerTurn * 1.1 * cornerDamping * passiveCornerScale) * dt
     : 0;
   playerState.rotation += cornerDelta;
   playerState.rotation = wrapAngleRad(playerState.rotation);
@@ -1729,11 +1812,24 @@ function updatePlayer(dt) {
   pos.z += forwardStep;
   pos.x += Math.sin(playerState.rotation) * moveSpeed;
   zone = getZoneForZ(pos.z);
+  const halfStreet = zone.streetWidth / 2;
   const routeCenter = getRouteCenterX(pos.z, zone);
+  const splitInfo = getSplitPathInfo(pos.z, halfStreet);
+  let laneTarget = routeCenter;
+  if (splitInfo && splitInfo.blend > 0.08) {
+    if (hasSteerInput && Math.abs(steerSmooth) > 0.05) {
+      splitLaneChoice = Math.sign(steerSmooth) || splitLaneChoice || 1;
+    } else if (splitLaneChoice === 0) {
+      splitLaneChoice = pos.x < routeCenter ? -1 : 1;
+    }
+    laneTarget = routeCenter + splitLaneChoice * splitInfo.branchOffset;
+  } else {
+    splitLaneChoice = 0;
+  }
   // X centering only on the ground — airborne player follows their own trajectory
   if (playerState.grounded) {
     const centeringStrength = THREE.MathUtils.lerp(0.28, 0.75, speedNorm);
-    pos.x += (routeCenter - pos.x) * dt * centeringStrength;
+    pos.x += (laneTarget - pos.x) * dt * centeringStrength;
   }
 
   // Ground follow
@@ -1753,11 +1849,15 @@ function updatePlayer(dt) {
   }
 
   // Zone-aware X clamp
-  const halfStreet = zone.streetWidth / 2;
   const cornerIntensity = Math.abs(cornerTurn);
   const shoulderPadding = THREE.MathUtils.lerp(1.35, 0.65, cornerIntensity);
-  const rideLimit = Math.max(1.5, halfStreet - shoulderPadding);
-  pos.x = Math.max(-rideLimit, Math.min(rideLimit, pos.x));
+  let rideLimit = Math.max(1.5, halfStreet - shoulderPadding);
+  if (splitInfo && splitInfo.blend > 0.08) {
+    rideLimit = Math.max(rideLimit, splitInfo.branchOffset + splitInfo.laneHalfWidth + 1.0);
+  }
+  const minRideX = routeCenter - rideLimit;
+  const maxRideX = routeCenter + rideLimit;
+  pos.x = Math.max(minRideX, Math.min(maxRideX, pos.x));
 
   if (playerState.grounded && Math.abs(steerSmooth) > 0.22 && playerState.speed > 0.35) {
     carveSprayTimer -= dt;
@@ -2355,6 +2455,7 @@ function startGame() {
   scoreMultiplier = 1;
   scoreMultiplierTimer = 0;
   landingImpactTimer = 0;
+  splitLaneChoice = 0;
   touchFlipQueued = false;
   for (const burst of collectBursts) {
     scene.remove(burst.points);
