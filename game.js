@@ -1382,7 +1382,11 @@ function updatePlayer(dt) {
   steerSmooth = THREE.MathUtils.lerp(steerSmooth, targetSteer, Math.min(1, 8 * dt));
   const steerRate = KEY_STEER_RATE;
   const yawFraction = Math.abs(playerState.rotation) / MAX_FORWARD_YAW;
-  const steerResistance = 1 - THREE.MathUtils.clamp((yawFraction - 0.6) / 0.4, 0, 1) * 0.85;
+  // Resistance only when pressing TOWARD the limit — pressing away gets full power
+  const towardLimit = steerSmooth !== 0 && Math.sign(steerSmooth) === Math.sign(playerState.rotation);
+  const steerResistance = towardLimit
+    ? 1 - THREE.MathUtils.clamp((yawFraction - 0.6) / 0.4, 0, 1) * 0.85
+    : 1.0;
   playerState.rotation += steerSmooth * steerRate * dt * steerResistance;
   if (!steerLeft && !steerRight) {
     playerState.rotation = THREE.MathUtils.lerp(playerState.rotation, 0, dt * 1.8);
