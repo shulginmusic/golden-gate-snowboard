@@ -1493,11 +1493,7 @@ if (isLikelyMobile) {
 window.addEventListener('touchstart', (e) => {
   if (state === GameState.GAMEOVER || state === GameState.WIN) return;
   if (isLikelyMobile) e.preventDefault();
-
-  if (state === GameState.MENU) {
-    startGame();
-    return;
-  }
+  if (state === GameState.MENU) return;
 
   if (isLikelyMobile) return;
 
@@ -2423,9 +2419,16 @@ function winGame() {
 }
 
 // ── Button Handlers ──────────────────────────────────────────
-document.getElementById('start-btn').addEventListener('click', () => {
+const startBtn = document.getElementById('start-btn');
+startBtn.addEventListener('click', () => {
+  if (state !== GameState.MENU) return;
   startGame();
 });
+startBtn.addEventListener('pointerdown', (e) => {
+  if (state !== GameState.MENU) return;
+  if (e.pointerType === 'touch') e.preventDefault();
+  startGame();
+}, { passive: false });
 document.getElementById('restart-btn').addEventListener('click', () => {
   startGame();
 });
