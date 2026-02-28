@@ -30,7 +30,7 @@ const KEY_STEER_RATE = 1.25;
 const COLLECT_RADIUS = 2.35;
 const COLLECTIBLE_BASE_SCORE = 250;
 const ROUTE_TURNINESS = 0.55;
-const MAX_FORWARD_YAW = 1.22;
+const MAX_FORWARD_YAW = 0.62;
 const SHARP_CORNER_WIDTH = 72;
 const SHARP_CORNERS = [
   { z: 980, dir: 1 },
@@ -320,7 +320,7 @@ const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 
 const bloomPass = new UnrealBloomPass(
-  new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.4, 0.85
+  new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.5, 0.72
 );
 composer.addPass(bloomPass);
 
@@ -837,7 +837,7 @@ function addMuralToBuilding(building, rng) {
 function createSnowflakeCollectible() {
   const geo = new THREE.IcosahedronGeometry(0.42, 1);
   const mat = new THREE.MeshStandardMaterial({
-    color: 0xffffff, emissive: 0xddeeff, emissiveIntensity: 1.0, flatShading: false,
+    color: 0xffffff, emissive: 0xddeeff, emissiveIntensity: 2.5, flatShading: false,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.userData.isCollectible = true;
@@ -1159,6 +1159,16 @@ function initLandmarks() {
   ferryBuildingLandmark.position.set(18, getHeight(18, fbZ), fbZ);
   ferryBuildingLandmark.rotation.y = -Math.PI / 4;
   scene.add(ferryBuildingLandmark);
+
+  // Sun — glowing disk high in the winter sky
+  const sunGeo = new THREE.SphereGeometry(12, 20, 20);
+  const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffcc });
+  const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+  sunMesh.position.set(-350, 280, -300);
+  scene.add(sunMesh);
+  const sunLight = new THREE.PointLight(0xfffcee, 0.45, 3000);
+  sunLight.position.copy(sunMesh.position);
+  scene.add(sunLight);
 }
 
 // ── Player ───────────────────────────────────────────────────
@@ -1209,11 +1219,22 @@ const playerState = {
   groundY: 0,
 };
 
+const trickState = {
+  airTime: 0,
+  hasLeft: false,
+  hasRight: false,
+  hasSpun: false,
+  spinAngle: 0,
+  spinRate: 0,
+  wasGrounded: true,
+};
+
 // ── Input ────────────────────────────────────────────────────
 const keys = { left: false, right: false, jump: false };
 const isLikelyMobile = window.matchMedia('(pointer: coarse)').matches
   || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 let touchJumpQueued = false;
+let jumpJustPressed = false;
 let steerSmooth = 0;
 let mobileStatusTimer = null;
 
@@ -1248,7 +1269,7 @@ function setMobileStatus(text, timeoutMs = 2400) {
 window.addEventListener('keydown', (e) => {
   if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
   if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
-  if (e.code === 'Space') { keys.jump = true; e.preventDefault(); }
+  if (e.code === 'Space') { keys.jump = true; jumpJustPressed = true; e.preventDefault(); }
   if (e.code === 'Enter' && state === GameState.MENU) startGame();
 });
 window.addEventListener('keyup', (e) => {
@@ -1340,6 +1361,12 @@ function updateCamera(dt) {
   lookTarget.applyAxisAngle(new THREE.Vector3(0, 1, 0), -playerState.rotation);
   lookTarget.add(playerState.position);
   camera.lookAt(lookTarget);
+
+  // Dynamic FOV — widens at high speed for rush effect
+  const speedRatio = (playerState.speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED);
+  const targetFov = 60 + Math.max(0, speedRatio) * 14;
+  camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, dt * 3);
+  camera.updateProjectionMatrix();
 }
 
 // ── Player Update ────────────────────────────────────────────
@@ -1354,7 +1381,12 @@ function updatePlayer(dt) {
   const targetSteer = THREE.MathUtils.clamp(digitalSteer, -1, 1);
   steerSmooth = THREE.MathUtils.lerp(steerSmooth, targetSteer, Math.min(1, 8 * dt));
   const steerRate = KEY_STEER_RATE;
-  playerState.rotation += steerSmooth * steerRate * dt;
+  const yawFraction = Math.abs(playerState.rotation) / MAX_FORWARD_YAW;
+  const steerResistance = 1 - THREE.MathUtils.clamp((yawFraction - 0.6) / 0.4, 0, 1) * 0.85;
+  playerState.rotation += steerSmooth * steerRate * dt * steerResistance;
+  if (!steerLeft && !steerRight) {
+    playerState.rotation = THREE.MathUtils.lerp(playerState.rotation, 0, dt * 1.8);
+  }
   const routeTurn = getRouteTurnSignal(pos.z);
   const cornerTurn = getSharpCornerSignal(pos.z);
   playerState.rotation -= (routeTurn * ROUTE_TURNINESS + cornerTurn * 1.95) * dt;
@@ -1377,11 +1409,44 @@ function updatePlayer(dt) {
     playerState.jumpVelocity = 8;
     playerState.grounded = false;
     touchJumpQueued = false;
+    jumpJustPressed = false;
+  } else if (!playerState.grounded && (jumpJustPressed || touchJumpQueued)) {
+    // Second jump press in air → 360 trick
+    if (!trickState.hasSpun) {
+      trickState.hasSpun = true;
+      trickState.spinRate = Math.PI * 4;
+    }
+    jumpJustPressed = false;
+    touchJumpQueued = false;
   }
-  if (touchJumpQueued && !playerState.grounded) touchJumpQueued = false;
+  jumpJustPressed = false;
   if (!playerState.grounded) {
     playerState.jumpVelocity -= 22 * dt;
   }
+
+  // Trick tracking — takeoff / airborne / landing
+  const nowGrounded = playerState.grounded;
+  if (trickState.wasGrounded && !nowGrounded) {
+    // Takeoff: reset trick inputs
+    trickState.airTime = 0;
+    trickState.hasLeft = false;
+    trickState.hasRight = false;
+    trickState.hasSpun = false;
+    trickState.spinAngle = 0;
+    trickState.spinRate = 0;
+  } else if (!trickState.wasGrounded && nowGrounded) {
+    // Landing: evaluate and award trick
+    evaluateTrick();
+    trickState.spinAngle = 0;
+    trickState.spinRate = 0;
+  }
+  if (!nowGrounded) {
+    trickState.airTime += dt;
+    if (steerLeft) trickState.hasLeft = true;
+    if (steerRight) trickState.hasRight = true;
+    trickState.spinAngle += trickState.spinRate * dt;
+  }
+  trickState.wasGrounded = nowGrounded;
 
   // Move forward
   const moveSpeed = playerState.speed * 60 * dt;
@@ -1433,10 +1498,13 @@ function updatePlayer(dt) {
 
   // Update mesh
   player.position.copy(pos);
-  player.rotation.y = -playerState.rotation;
+  player.rotation.y = -playerState.rotation + (nowGrounded ? 0 : trickState.spinAngle);
 
   const turnAmount = steerSmooth;
-  player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, turnAmount * 0.25, 5 * dt);
+  const grabTilt = (!nowGrounded && (trickState.hasLeft || trickState.hasRight))
+    ? (trickState.hasLeft ? 1 : -1) * 0.45
+    : turnAmount * 0.25;
+  player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, grabTilt, 7 * dt);
 
   const normal = getTerrainNormal(pos.x, pos.z);
   const slopeAngleX = Math.atan2(normal.z, normal.y);
@@ -1727,6 +1795,55 @@ function onCollision() {
   if (lives <= 0) endGame();
 }
 
+// ── Trick System ─────────────────────────────────────────────
+
+const trickBurstColors = [0xff4488, 0xffdd44, 0x44ffaa, 0x44aaff, 0xff8844, 0xaa44ff];
+
+function evaluateTrick() {
+  if (trickState.airTime < 0.15) return;
+  const { hasLeft, hasRight, hasSpun } = trickState;
+  let name = null, pts = 0, level = 0;
+  if (hasSpun && hasLeft && hasRight) { name = 'MCTWIST!'; pts = 600; level = 3; }
+  else if (hasSpun && hasLeft)        { name = 'NOSE GRAB 360!'; pts = 400; level = 2; }
+  else if (hasSpun && hasRight)       { name = 'TAIL GRAB 360!'; pts = 400; level = 2; }
+  else if (hasSpun)                   { name = '360!'; pts = 300; level = 2; }
+  else if (hasLeft && hasRight)       { name = 'SHIFTY!'; pts = 250; level = 1; }
+  else if (hasLeft)                   { name = 'SHIFTY!'; pts = 200; level = 1; }
+  else if (hasRight)                  { name = 'INDY!'; pts = 200; level = 1; }
+  if (name) {
+    score += pts;
+    showBonus(name + ' +' + pts);
+    spawnTrickLandingBurst(playerState.position.clone(), level);
+  }
+}
+
+function spawnTrickLandingBurst(worldPos, level) {
+  const particleCount = 16 + level * 16;
+  const positions = new Float32Array(particleCount * 3);
+  const velocities = new Float32Array(particleCount * 3);
+  const color = trickBurstColors[level % trickBurstColors.length];
+  for (let i = 0; i < particleCount; i++) {
+    const a = (i / particleCount) * Math.PI * 2 + Math.random() * 0.4;
+    const r = 2.5 + Math.random() * 4.0;
+    positions[i * 3]     = worldPos.x;
+    positions[i * 3 + 1] = worldPos.y + 0.3;
+    positions[i * 3 + 2] = worldPos.z;
+    velocities[i * 3]     = Math.cos(a) * r;
+    velocities[i * 3 + 1] = 3.5 + Math.random() * 5.0;
+    velocities[i * 3 + 2] = Math.sin(a) * r;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({
+    color, size: 0.28, sizeAttenuation: false,
+    transparent: true, opacity: 1, depthWrite: false, fog: false,
+  });
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  scene.add(points);
+  collectBursts.push({ points, velocities, life: 0.9, duration: 0.9 });
+}
+
 // ── Scoring & UI ─────────────────────────────────────────────
 const hudEl = document.getElementById('hud');
 const hudScore = document.getElementById('hud-score');
@@ -1854,10 +1971,18 @@ function startGame() {
   touchRight = false;
   touchJump = false;
   touchJumpQueued = false;
+  jumpJustPressed = false;
   steerSmooth = 0;
   collectibleCombo = 0;
   collectibleComboTimer = 0;
   carveSprayTimer = 0;
+  trickState.airTime = 0;
+  trickState.hasLeft = false;
+  trickState.hasRight = false;
+  trickState.hasSpun = false;
+  trickState.spinAngle = 0;
+  trickState.spinRate = 0;
+  trickState.wasGrounded = true;
   for (const burst of collectBursts) {
     scene.remove(burst.points);
     burst.points.geometry.dispose();
@@ -1982,6 +2107,10 @@ function gameLoop() {
     updateZoneHUD(dt);
     updateCollectBursts(dt);
     updateCarveSprays(dt);
+
+    // Dynamic vignette — tightens at high speed
+    const spdRatio = (playerState.speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED);
+    seventiesShader.uniforms.vignetteAmount.value = 0.45 + Math.max(0, spdRatio) * 0.22;
 
     if (collectibleComboTimer > 0) {
       collectibleComboTimer -= dt;
