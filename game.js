@@ -8,6 +8,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 // ── Constants ────────────────────────────────────────────────
 const CHUNK_WIDTH = 80;
@@ -171,8 +172,8 @@ const ZONES = [
     id: 'bay', name: 'THE BAY',
     zStart: 5760, zEnd: 6400,
     streetWidth: 12, buildingInset: 6,
-    obstaclesPerChunk: [2, 4], collectiblesPerChunk: [1, 1],
-    slopeMultiplier: 0.05, hillAmplitude: 4, hillFreqX: 0.02, hillFreqZ: 0.018, flatness: 0.12,
+    obstaclesPerChunk: [4, 7], collectiblesPerChunk: [1, 1],
+    slopeMultiplier: 0.085, hillAmplitude: 4, hillFreqX: 0.02, hillFreqZ: 0.018, flatness: 0.12,
     obstacleWeights: { car: 0.3, dogWalker: 0.45, limeScooter: 0.2, van: 0.05 },
     buildingType: 'pier', victorianDensity: 0,
     fogColor: 0x60a8d0, fogDensity: 0.003, skyColor: 0x60a8d0,
@@ -310,6 +311,7 @@ function seededRandom(seed) {
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function wrapAngleRad(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }
+function roundedBox(w, h, d, r = 0.08, s = 4) { return new RoundedBoxGeometry(w, h, d, s, r); }
 
 function disposeObject(obj) {
   if (obj.geometry) obj.geometry.dispose();
@@ -355,6 +357,27 @@ function getHeight(x, z) {
     + 2.4 * smoothstep(5000, 5250, z)
   ) * dropScale;
   const downhillDrops = -stagedDrops;
+  const cadenceDrops = (
+    0.55 * smoothstep(120, 220, z)
+    + 0.48 * smoothstep(430, 520, z)
+    + 0.46 * smoothstep(710, 790, z)
+    + 0.62 * smoothstep(990, 1080, z)
+    + 0.52 * smoothstep(1270, 1360, z)
+    + 0.58 * smoothstep(1580, 1660, z)
+    + 0.50 * smoothstep(1870, 1960, z)
+    + 0.57 * smoothstep(2160, 2250, z)
+    + 0.53 * smoothstep(2460, 2540, z)
+    + 0.60 * smoothstep(2780, 2860, z)
+    + 0.55 * smoothstep(3120, 3200, z)
+    + 0.62 * smoothstep(3460, 3540, z)
+    + 0.58 * smoothstep(3820, 3900, z)
+    + 0.64 * smoothstep(4210, 4290, z)
+    + 0.58 * smoothstep(4630, 4710, z)
+    + 0.63 * smoothstep(5070, 5160, z)
+    + 0.57 * smoothstep(5520, 5600, z)
+    + 0.74 * smoothstep(5920, 6030, z)
+  ) * (1 - flat * 0.55);
+  const cadenceProfile = -cadenceDrops;
 
   // Side camber and cross-slope texture vary with x only, never creating uphill ramps.
   const camberStrength = (0.032 + hillAmp * 0.0014) * (1 - flat * 0.65);
@@ -389,7 +412,7 @@ function getHeight(x, z) {
     waterDip = -2 * bayT;
   }
 
-  return baseSlope + downhillDrops + routeCamber + hills + noise + laneProfile + waterDip;
+  return baseSlope + downhillDrops + cadenceProfile + routeCamber + hills + noise + laneProfile + waterDip;
 }
 
 function getTerrainNormal(x, z) {
@@ -563,7 +586,7 @@ function createVictorianHouse(rng, colorOverride) {
   const trimMat = new THREE.MeshStandardMaterial({ color: trimColor, flatShading: false });
 
   // Main body
-  const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), bodyMat);
+  const body = new THREE.Mesh(roundedBox(width, height, depth, 0.16, 5), bodyMat);
   body.position.y = height / 2;
   body.castShadow = true;
   body.receiveShadow = true;
@@ -591,20 +614,20 @@ function createVictorianHouse(rng, colorOverride) {
   const bayW = width * 0.4;
   const bayH = height * 0.45;
   const bayD = 1.0;
-  const bayWindow = new THREE.Mesh(new THREE.BoxGeometry(bayW, bayH, bayD), bodyMat);
+  const bayWindow = new THREE.Mesh(roundedBox(bayW, bayH, bayD, 0.08, 4), bodyMat);
   bayWindow.position.set(0, height * 0.45, depth / 2 + bayD / 2);
   g.add(bayWindow);
 
   // Bay window panes
   for (let w = -1; w <= 1; w++) {
-    const pane = new THREE.Mesh(new THREE.BoxGeometry(bayW * 0.25, bayH * 0.6, 0.05), winMat);
+      const pane = new THREE.Mesh(roundedBox(bayW * 0.25, bayH * 0.6, 0.05, 0.01, 2), winMat);
     pane.position.set(w * bayW * 0.3, height * 0.45, depth / 2 + bayD + 0.03);
     g.add(pane);
   }
 
   // Front steps
   for (let s = 0; s < 3; s++) {
-    const step = new THREE.Mesh(new THREE.BoxGeometry(width * 0.35, 0.2, 0.4), trimMat);
+    const step = new THREE.Mesh(roundedBox(width * 0.35, 0.2, 0.4, 0.03, 3), trimMat);
     step.position.set(0, s * 0.2 + 0.1, depth / 2 + bayD + 0.3 + s * 0.4);
     g.add(step);
   }
@@ -612,7 +635,7 @@ function createVictorianHouse(rng, colorOverride) {
   // Trim bands
   const floors = Math.floor(height / 2.8);
   for (let f = 0; f <= floors; f++) {
-    const trimStrip = new THREE.Mesh(new THREE.BoxGeometry(width + 0.15, 0.1, depth + 0.15), trimMat);
+    const trimStrip = new THREE.Mesh(roundedBox(width + 0.15, 0.1, depth + 0.15, 0.015, 2), trimMat);
     trimStrip.position.y = f * 2.8 + 0.05;
     g.add(trimStrip);
   }
@@ -629,7 +652,7 @@ function createVictorianHouse(rng, colorOverride) {
   // Front window stack (rowhouse look)
   for (let f = 0; f < floors; f++) {
     for (const xOff of [-0.35, 0.35]) {
-      const frontWin = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.06), winMat);
+      const frontWin = new THREE.Mesh(roundedBox(0.7, 1.0, 0.06, 0.01, 2), winMat);
       frontWin.position.set(xOff * width, 1.6 + f * 2.3, depth / 2 + 0.53);
       g.add(frontWin);
     }
@@ -637,7 +660,7 @@ function createVictorianHouse(rng, colorOverride) {
 
   // Porch roof and columns
   const porchRoof = new THREE.Mesh(
-    new THREE.BoxGeometry(width * 0.78, 0.08, 1.15),
+    roundedBox(width * 0.78, 0.08, 1.15, 0.015, 2),
     trimMat
   );
   porchRoof.position.set(0, 1.65, depth / 2 + 1.05);
@@ -651,7 +674,7 @@ function createVictorianHouse(rng, colorOverride) {
 
   // Roof dormer
   const dormer = new THREE.Mesh(
-    new THREE.BoxGeometry(width * 0.38, 1.05, 0.95),
+    roundedBox(width * 0.38, 1.05, 0.95, 0.05, 3),
     trimMat
   );
   dormer.position.set(0, height + 0.8, depth * 0.1);
@@ -668,7 +691,7 @@ function createGenericBuilding(rng) {
   const depth = 3 + rng() * 5;
   const color = colorsBuildings[Math.floor(rng() * colorsBuildings.length)];
   const mat = new THREE.MeshStandardMaterial({ color, flatShading: false });
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), mat);
+  const mesh = new THREE.Mesh(roundedBox(width, height, depth, 0.12, 4), mat);
   mesh.position.y = height / 2;
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -677,7 +700,7 @@ function createGenericBuilding(rng) {
   for (let f = 0; f < floors; f++) {
     for (let w = -1; w <= 1; w++) {
       if (rng() > 0.3) {
-        const win = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.5, 0.4), winMat);
+        const win = new THREE.Mesh(roundedBox(0.05, 0.5, 0.4, 0.01, 2), winMat);
         win.position.set(width / 2 + 0.03, -height / 2 + 1.5 + f * 2.5, w * 1.2);
         mesh.add(win);
         const win2 = win.clone();
@@ -696,13 +719,13 @@ function createPierBuilding(rng) {
   const height = 4 + rng() * 3;
   const depth = 8 + rng() * 6;
   const mat = new THREE.MeshStandardMaterial({ color: 0x998877, flatShading: false });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), mat);
+  const body = new THREE.Mesh(roundedBox(width, height, depth, 0.14, 4), mat);
   body.position.y = height / 2;
   body.castShadow = true;
   g.add(body);
 
   const roofLip = new THREE.Mesh(
-    new THREE.BoxGeometry(width + 0.4, 0.3, depth + 0.4),
+    roundedBox(width + 0.4, 0.3, depth + 0.4, 0.05, 3),
     new THREE.MeshStandardMaterial({ color: 0x777766, flatShading: false })
   );
   roofLip.position.y = height + 0.15;
@@ -711,7 +734,7 @@ function createPierBuilding(rng) {
   const doorMat = new THREE.MeshStandardMaterial({ color: 0x556655, flatShading: false });
   const doorCount = Math.max(1, Math.floor(width / 3));
   for (let d = 0; d < doorCount; d++) {
-    const door = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 0.1), doorMat);
+    const door = new THREE.Mesh(roundedBox(1.5, 2.5, 0.1, 0.02, 3), doorMat);
     door.position.set(-width / 2 + 2 + d * 3, 1.25, depth / 2 + 0.05);
     g.add(door);
   }
@@ -724,11 +747,11 @@ function createPierBuilding(rng) {
 function createTrolley() {
   const g = new THREE.Group();
   const bodyMat = new THREE.MeshStandardMaterial({ color: 0xdd6611, flatShading: false });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.8, 5), bodyMat);
+  const body = new THREE.Mesh(roundedBox(2.2, 1.8, 5, 0.16, 4), bodyMat);
   body.position.y = 1.2; body.castShadow = true; g.add(body);
 
   const roofMatT = new THREE.MeshStandardMaterial({ color: 0xeecc88, flatShading: false });
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 5.2), roofMatT);
+  const roof = new THREE.Mesh(roundedBox(2.4, 0.2, 5.2, 0.04, 3), roofMatT);
   roof.position.y = 2.2; g.add(roof);
 
   for (const side of [-1, 1]) {
@@ -754,13 +777,13 @@ function createCar() {
   const color = colors70sCars[Math.floor(Math.random() * colors70sCars.length)];
   const bodyMat = new THREE.MeshStandardMaterial({ color, flatShading: false });
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 3.5), bodyMat);
+  const body = new THREE.Mesh(roundedBox(1.8, 0.8, 3.5, 0.11, 4), bodyMat);
   body.position.y = 0.6; body.castShadow = true; g.add(body);
 
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.65, 1.8), bodyMat);
+  const cabin = new THREE.Mesh(roundedBox(1.5, 0.65, 1.8, 0.1, 4), bodyMat);
   cabin.position.set(0, 1.35, -0.2); g.add(cabin);
 
-  const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.5, 0.05), winMat);
+  const windshield = new THREE.Mesh(roundedBox(1.3, 0.5, 0.05, 0.01, 2), winMat);
   windshield.position.set(0, 1.3, -1.1); g.add(windshield);
 
   for (const xOff of [-0.85, 0.85]) {
@@ -808,7 +831,7 @@ function createDogWalker() {
   g.add(leash);
 
   const dogBodyMat = new THREE.MeshStandardMaterial({ color: 0x8a6b4f, flatShading: false });
-  const dogBody = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.28, 0.28), dogBodyMat);
+  const dogBody = new THREE.Mesh(roundedBox(0.55, 0.28, 0.28, 0.05, 3), dogBodyMat);
   dogBody.position.set(0.95, 0.3, 0.26);
   g.add(dogBody);
 
@@ -835,7 +858,7 @@ function createLimeScooter() {
   const limeMat = new THREE.MeshStandardMaterial({ color: 0x3ddc4a, flatShading: false });
   const darkMat = new THREE.MeshStandardMaterial({ color: 0x1f2427, flatShading: false });
 
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.08, 1.15), limeMat);
+  const deck = new THREE.Mesh(roundedBox(0.24, 0.08, 1.15, 0.015, 3), limeMat);
   deck.position.y = 0.12;
   g.add(deck);
 
@@ -844,7 +867,7 @@ function createLimeScooter() {
   stem.rotation.x = 0.1;
   g.add(stem);
 
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.05), darkMat);
+  const bar = new THREE.Mesh(roundedBox(0.55, 0.05, 0.05, 0.01, 2), darkMat);
   bar.position.set(0, 1.15, -0.45);
   g.add(bar);
 
@@ -897,16 +920,16 @@ function createCityVan() {
   const bodyMat = new THREE.MeshStandardMaterial({ color, flatShading: false });
   const trimMatVan = new THREE.MeshStandardMaterial({ color: 0x87909a, flatShading: false });
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.8, 3.2), bodyMat);
+  const body = new THREE.Mesh(roundedBox(2.0, 1.8, 3.2, 0.15, 4), bodyMat);
   body.position.y = 1.3; body.castShadow = true; g.add(body);
 
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.24, 3.05), trimMatVan);
+  const roof = new THREE.Mesh(roundedBox(1.95, 0.24, 3.05, 0.04, 3), trimMatVan);
   roof.position.y = 2.2; g.add(roof);
 
-  const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.9, 0.05), winMat);
+  const windshield = new THREE.Mesh(roundedBox(1.6, 0.9, 0.05, 0.01, 2), winMat);
   windshield.position.set(0, 2.2, -1.62); g.add(windshield);
 
-  const sidePanel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.8, 2.2), trimMatVan);
+  const sidePanel = new THREE.Mesh(roundedBox(0.04, 0.8, 2.2, 0.01, 2), trimMatVan);
   sidePanel.position.set(1.02, 1.42, 0); g.add(sidePanel);
   const sidePanel2 = sidePanel.clone();
   sidePanel2.position.x = -1.02;
@@ -1321,7 +1344,7 @@ function createFerryBoat() {
   const deckMat = new THREE.MeshStandardMaterial({ color: 0x886644, flatShading: false });
   const cabinMat = new THREE.MeshStandardMaterial({ color: 0xddddcc, flatShading: false });
 
-  const hull = new THREE.Mesh(new THREE.BoxGeometry(6, 2, 12), hullMat);
+  const hull = new THREE.Mesh(roundedBox(6, 2, 12, 0.22, 4), hullMat);
   hull.position.y = 1; g.add(hull);
 
   // Bow
@@ -1329,10 +1352,10 @@ function createFerryBoat() {
   bow.rotation.x = -Math.PI / 2; bow.rotation.y = Math.PI / 4;
   bow.position.set(0, 1, 8); g.add(bow);
 
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.2, 11), deckMat);
+  const deck = new THREE.Mesh(roundedBox(5.5, 0.2, 11, 0.05, 3), deckMat);
   deck.position.y = 2.1; g.add(deck);
 
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(4, 2.5, 5), cabinMat);
+  const cabin = new THREE.Mesh(roundedBox(4, 2.5, 5, 0.14, 4), cabinMat);
   cabin.position.set(0, 3.4, -1); cabin.castShadow = true; g.add(cabin);
 
   const stackMat = new THREE.MeshStandardMaterial({ color: 0xdd4422, flatShading: false });
@@ -1422,31 +1445,31 @@ function initLandmarks() {
 function createPlayer() {
   const g = new THREE.Group();
   const boardMat = new THREE.MeshStandardMaterial({ color: 0xcc3333, flatShading: false });
-  const board = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 1.6), boardMat);
+  const board = new THREE.Mesh(roundedBox(0.4, 0.08, 1.6, 0.03, 3), boardMat);
   board.position.y = 0.04; board.castShadow = true; g.add(board);
 
   const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2255aa, flatShading: false });
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.9, 14), bodyMat);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.25, 0.9, 22), bodyMat);
   body.position.y = 0.65; body.castShadow = true; g.add(body);
 
   for (const side of [-1, 1]) {
-    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.55, 10), bodyMat);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.55, 14), bodyMat);
     arm.position.set(side * 0.32, 0.6, 0); arm.rotation.z = side * 0.4;
     arm.castShadow = true; g.add(arm);
   }
 
   const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc88, flatShading: false });
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 14, 10), headMat);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 22, 16), headMat);
   head.position.y = 1.25; g.add(head);
 
   const beanieMat = new THREE.MeshStandardMaterial({ color: 0xdd6600, flatShading: false });
   const beanie = new THREE.Mesh(
-    new THREE.SphereGeometry(0.19, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), beanieMat
+    new THREE.SphereGeometry(0.19, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2), beanieMat
   );
   beanie.position.y = 1.32; g.add(beanie);
 
   const goggleMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, flatShading: false });
-  const goggles = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.06), goggleMat);
+  const goggles = new THREE.Mesh(roundedBox(0.28, 0.08, 0.06, 0.015, 3), goggleMat);
   goggles.position.set(0, 1.27, -0.16); g.add(goggles);
 
   return g;
@@ -2409,6 +2432,14 @@ function updateFinishBoat(time) {
   }
 }
 
+function checkFinishFallback() {
+  if (state !== GameState.PLAYING) return;
+  // Fallback: if ferry was missed/culled, reaching the route end still wins the run.
+  if (playerState.position.z >= TOTAL_GAME_LENGTH - 6) {
+    winGame();
+  }
+}
+
 // ── Game State Machine ───────────────────────────────────────
 
 function startGame() {
@@ -2573,6 +2604,14 @@ function gameLoop() {
     updateMenuCamera(time);
   } else if (state === GameState.PLAYING) {
     updatePlayer(dt);
+    checkFinishFallback();
+    if (state !== GameState.PLAYING) {
+      updateCollectBursts(dt);
+      updateCarveSprays(dt);
+      updateSnowParticles(dt);
+      composer.render();
+      return;
+    }
     updateChunks(playerState.position.z);
     updateCamera(dt);
     checkCollisions();
